@@ -30,7 +30,6 @@ if args == "":
 else:
     CITEKEY = args.input.lstrip('@')
 
-all_title_path = 'base/all_title.csv'
 
 output_dir = os.path.join('output', CITEKEY)
 os.makedirs(output_dir, exist_ok=True)

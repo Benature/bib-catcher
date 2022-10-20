@@ -10,10 +10,11 @@ import shutil
 
 import traceback
 
+all_title_path = 'base/all.csv'
+
 
 def check_environment():
     dirs = ['base', 'recent', 'output']
-    all_title_path = 'base/all_title.csv'
     for d in dirs:
         if not os.path.exists(d):
             os.makedirs(d)

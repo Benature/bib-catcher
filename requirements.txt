@@ -1,3 +1,5 @@
 pandas
 requests
 bs4
+gscholar
+bibtexparser

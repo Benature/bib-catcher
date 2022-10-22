@@ -1,15 +1,13 @@
 # %%
 import re
-import requests
-from bs4 import BeautifulSoup as bs
-import time
-import random
 from collections import namedtuple
 import pandas as pd
 import os
 import shutil
 import traceback
 import argparse
+from gscholar import query
+import bibtexparser
 
 from utils import *
 
@@ -26,11 +24,6 @@ else:
 
 # %%
 check_environment()
-
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_2) AppleWebKit/601.3.9 (KHTML, like Gecko) Version/9.0.2 Safari/601.3.9'
-}
-scholar = "https://scholar.google.com/scholar?q="
 
 
 output_dir = os.path.join('output', CITEKEY)
@@ -60,79 +53,44 @@ try:
 
     cite_list = re.findall(r'\[\d+\].*?(?= \[\d+\])', cites)
     for i in range(len(cite_list)):
-        cidx = re.findall(r'\[\d+\]', cite_list[i])[0].strip('[]')
-        cidx = int(cidx)
+        cidx = int(re.findall(r'\[\d+\]', cite_list[i])[0].strip('[]'))
         cite = re.sub(r'\[\d+\]', '', cite_list[i]).strip()
         if cite == "":
             continue
 
-        print()
-        print(cidx, "|", cite)
+        print('\n', cidx, "|", cite)
 
-        duplicate = False
-
+        # check whether the paper exists in base
         duplicate_cites = base_df[base_df.title.apply(
             lambda t: is_same_item(t, cite))]
-        print(base_df.title.apply(lambda t: is_same_item(t, cite)))
         if len(duplicate_cites) != 0:
             dc = duplicate_cites.reset_index()
+            titles[cidx] = dc.title[0]
             results.append(Cite(dc.citekey[0], cidx, dc.title[0]))
             print("[Pass] bibtex is exist. 💾")
             continue
 
-        time.sleep(random.random()*3)
-        url = scholar + cite
-        response = requests.get(url, headers=headers)
-        soup = bs(response.text, 'lxml')
+        # query google scholar
+        bib = query(cite)
 
-        if check_block(soup):
-            print("[Fatal] request too frequent! Please try later. 🤡")
-            break
-
-        gs_ris = soup.select('.gs_r.gs_or.gs_scl')
-        CONTINUE = False
-        if len(gs_ris) == 0:
-            print("No result")
-            CONTINUE = True
-        else:
-            gs = gs_ris[0]
-            title = gs.select('h3')[0].text.strip()
-            if not is_same_item(title, cite, echo=True):
-                CONTINUE = True
-
-        if CONTINUE:
-            print(url.replace(" ", "%20"))
+        if len(bib) == 0:  # empty output
             print("not found 😢")
             fails.append(cite_list[i])
-            # break # debug
+        bib = bib[0]
+        bib_dict = bibtexparser.loads(bib).entries[0]
+
+        if not is_same_item(bib_dict['title'], cite, echo=True):  # not same item
+            print("different title 😢")
+            fails.append(cite_list[i])
             continue
 
+        title = bib_dict['title']
         titles[cidx] = title
 
-        # https://stackoverflow.com/questions/69428700/how-to-scrape-full-paper-citation-from-google-scholar-search-results-python
-        data_cid = gs['data-cid']
-        url_cite = f"https://scholar.google.com/scholar?q=info:{data_cid}:scholar.google.com/&output=cite&scirp=0&hl=zh-CN"
-
-        ref = requests.get(url_cite)
-        ref_soup = bs(ref.content, 'lxml')
-        for citi in ref_soup.select('.gs_citi'):
-            if 'BibTeX' == citi.text:
-                bib = requests.get(citi['href'])
-                if 'We\'re sorry...' in bib.text:
-                    print("[Fatal] request too frequent! Please try later. 🤡\n")
-                    print(bib.text)
-                    BREAK = True
-                    break
-                bibs.append(bib.text)
-                citekey = re.findall(r'@\w+\{(\w+),', bib.text)[0]
-                results.append(Cite(citekey, cidx, title))
-                print("OK ✌️", citekey)
-                BREAK = False
-                break
-        if BREAK:
-            print("BREAK")
-
-            break
+        bibs.append(bib)
+        citekey = bib_dict['ID']
+        results.append(Cite(citekey, cidx, title))
+        print("OK ✌️", citekey)
 
     # return titles, bibs, fails
 except Exception as e:

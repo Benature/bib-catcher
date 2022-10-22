@@ -1,3 +1,4 @@
+# %%
 import re
 import requests
 from bs4 import BeautifulSoup as bs
@@ -12,11 +13,18 @@ import argparse
 
 from utils import *
 
+# %%
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-i', '--input',  type=str, required=True, default="")
+parser.add_argument('-i', '--input',  type=str, required=False, default="")
 args = parser.parse_args()
 
+if args.input == "":
+    CITEKEY = '@benson2010network'.lstrip('@')
+else:
+    CITEKEY = args.input.lstrip('@')
+
+# %%
 check_environment()
 
 headers = {
@@ -25,26 +33,14 @@ headers = {
 scholar = "https://scholar.google.com/scholar?q="
 
 
-if args == "":
-    CITEKEY = '@benson2010network'.lstrip('@')
-else:
-    CITEKEY = args.input.lstrip('@')
-
-
 output_dir = os.path.join('output', CITEKEY)
 os.makedirs(output_dir, exist_ok=True)
 
 title_path = os.path.join(output_dir, 'title.csv')
-if os.path.exists(title_path):
-    df0 = pd.read_csv(title_path, engine='python')
-    exist_cid = dict(zip(df0.cid.tolist(), df0.title.tolist()))
-    print(len(exist_cid))
-else:
-    exist_cid = {}
 
 
-all_df0 = pd.read_csv(all_title_path)
-exist_titles = all_df0.title.tolist()
+base_df = pd.read_csv(base_path)
+exist_titles = base_df.title.tolist()
 
 with open(f'input/{CITEKEY}.txt', 'r') as f:
     cites = f.read()
@@ -52,19 +48,17 @@ with open(f'input/{CITEKEY}.txt', 'r') as f:
 
 
 Cite = namedtuple("Cite", "citekey cidx title")
-print(cites)
-cite_list = re.findall(r'\[\d+\].*?(?= \[\d+\])', cites)
-print(cite_list)
 
-BREAK = True
+# %%
 
-# def scholar_spider(cite_list, exist_cid):
-# if True:
 try:
+    BREAK = True
     results = []
     fails = []
     titles = {}
     bibs = []
+
+    cite_list = re.findall(r'\[\d+\].*?(?= \[\d+\])', cites)
     for i in range(len(cite_list)):
         cidx = re.findall(r'\[\d+\]', cite_list[i])[0].strip('[]')
         cidx = int(cidx)
@@ -76,13 +70,13 @@ try:
         print(cidx, "|", cite)
 
         duplicate = False
-        for exist_title in exist_titles:
-            if is_same_item(exist_title, cite):
-                duplicate = True
-                break
 
-        if duplicate or (cidx in exist_cid and is_same_item(exist_cid[cidx], cite)):
-            # results.append(Cite(citekey, cidx, title))
+        duplicate_cites = base_df[base_df.title.apply(
+            lambda t: is_same_item(t, cite))]
+        print(base_df.title.apply(lambda t: is_same_item(t, cite)))
+        if len(duplicate_cites) != 0:
+            dc = duplicate_cites.reset_index()
+            results.append(Cite(dc.citekey[0], cidx, dc.title[0]))
             print("[Pass] bibtex is exist. 💾")
             continue
 
@@ -103,12 +97,7 @@ try:
         else:
             gs = gs_ris[0]
             title = gs.select('h3')[0].text.strip()
-            print(title)
-
-            # parser(title) not in parser(cite):
             if not is_same_item(title, cite, echo=True):
-                # print(parser(title))
-                # print(parser(cite))
                 CONTINUE = True
 
         if CONTINUE:
@@ -118,7 +107,6 @@ try:
             # break # debug
             continue
 
-        print(title)
         titles[cidx] = title
 
         # https://stackoverflow.com/questions/69428700/how-to-scrape-full-paper-citation-from-google-scholar-search-results-python
@@ -138,7 +126,7 @@ try:
                 bibs.append(bib.text)
                 citekey = re.findall(r'@\w+\{(\w+),', bib.text)[0]
                 results.append(Cite(citekey, cidx, title))
-                print("OK ✌️", BREAK)
+                print("OK ✌️", citekey)
                 BREAK = False
                 break
         if BREAK:
@@ -150,6 +138,8 @@ try:
 except Exception as e:
     print(e)
     traceback.print_exc()
+
+# %%
 
 
 # =======================================
@@ -167,19 +157,19 @@ with open(os.path.join(output_dir, 'fail.txt'), 'w', encoding='utf-8') as f:
 
 df = pd.DataFrame(titles.items(), columns=['cid', 'title'])
 if os.path.exists(title_path):
-    df0 = pd.read_csv(title_path)
-    df = pd.concat([df0, df]).drop_duplicates('cid', keep='last')
+    title_df = pd.read_csv(title_path)
+    df = pd.concat([title_df, df]).drop_duplicates('cid', keep='last')
     df = df.sort_values('cid')
 df.to_csv(title_path, index=False)
 
 shutil.rmtree('recent')
 shutil.copytree(output_dir, 'recent')
 
-
-all_df0 = pd.read_csv('base/all_title.csv')
+# %%
+base_df = pd.read_csv(base_path)
 new_cites = []
 for cite in results:
-    subdf = all_df0[all_df0.citekey == cite.citekey]
+    subdf = base_df[base_df.citekey == cite.citekey]
     if len(subdf) == 0:
         new_cites.append(dict(
             citekey=cite.citekey,
@@ -189,10 +179,12 @@ for cite in results:
         ))
     else:  # exist
         idx = subdf.index[0]
-        if CITEKEY in all_df0.loc[idx, 'cite_by']:
+        if CITEKEY in base_df.loc[idx, 'cite_by']:
             continue
-        all_df0.loc[idx, 'cite_by'] += f';{CITEKEY}({cite.cidx})'
-        all_df0.loc[idx, 'cite_count'] += 1
-all_df = pd.concat([all_df0, pd.DataFrame(new_cites)]).sort_values(
+        base_df.loc[idx, 'cite_by'] += f';{CITEKEY}({cite.cidx})'
+        base_df.loc[idx, 'cite_count'] += 1
+all_df = pd.concat([base_df, pd.DataFrame(new_cites)]).sort_values(
     ['cite_count', 'citekey'], ascending=False)
-all_df.to_csv('base/all_title.csv', index=False)
+all_df.to_csv(base_path, index=False)
+
+# %%

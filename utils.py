@@ -1,16 +1,7 @@
 import re
-import requests
-from bs4 import BeautifulSoup as bs
-import time
-import random
-from collections import namedtuple
-import pandas as pd
 import os
-import shutil
 
-import traceback
-
-all_title_path = 'base/all.csv'
+base_path = 'base/all.csv'
 
 
 def check_environment():
@@ -18,19 +9,20 @@ def check_environment():
     for d in dirs:
         if not os.path.exists(d):
             os.makedirs(d)
-    if not os.path.exists(all_title_path):
-        with open(all_title_path, "w") as f:
+    if not os.path.exists(base_path):
+        with open(base_path, "w") as f:
             f.write("citekey,cite_count,title,cite_by\n")
 
 
-def is_same_item(short, long, echo=False):
+def parser(s):
     replace_pattern = r'[\{\} -]'
+    s = re.findall(r'[^\]]+$', s)[0]
+    for k, v in {"’": "'", 'ﬁ': 'fi'}.items():
+        s = s.replace(k, v)
+    return re.sub(replace_pattern, '', s).lower()
 
-    def parser(s):
-        s = re.findall(r'[^\]]+$', s)[0]
-        for k, v in {"’": "'", 'ﬁ': 'fi'}.items():
-            s = s.replace(k, v)
-        return re.sub(replace_pattern, '', s).lower()
+
+def is_same_item(short, long, echo=False):
     if parser(short) in parser(long):
         return True
     elif echo:

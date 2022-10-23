@@ -1,5 +1,9 @@
 import re
 import os
+from bibtexparser.bwriter import BibTexWriter
+import requests
+from bs4 import BeautifulSoup as bs
+
 
 base_path = 'base/all.csv'
 
@@ -46,3 +50,43 @@ def check_block(soup):
         return True
 
     return False
+
+
+def enrich_bib(bib_db):
+    title = bib_db.entries[0]['title']
+    if ':' in title:
+        shorttitle = title.split(':')[0].strip(' ')
+        if len(shorttitle.split(' ')) == 1:
+            bib_db.entries[0]['shorttitle'] = shorttitle
+    writer = BibTexWriter()
+    return writer.write(bib_db)
+
+
+def get_refs_from_url(url):
+    if not url.startswith('http'):
+        # then it would be a doi
+        if 'doi' not in url:
+            url = os.path.join("https://doi.org/", url)
+
+    response = requests.get(url)
+
+    cite_list = []
+    if 'dl.acm' in response.url:
+        soup = bs(response.text, 'lxml')
+        for i, ref in enumerate(soup.select('.references__item')):
+            c = ref.select('.references__note')[0].contents[0]
+            cite_list.append(f"[{i+1}] "+c)
+    elif 'ieeexplore.ieee' in response.url:
+        arnumber = response.url.split('/')[-2]
+        ref_url = f"https://ieeexplore.ieee.org/xpl/dwnldReferences?arnumber={arnumber}"
+        response = requests.get(ref_url)
+        soup = bs(response.text, 'lxml')
+        cite_list = soup.select('body')[0].text.replace(
+            '\t', '').replace('\n\n', '').strip(' \n').split('\n')
+        cite_list = list(map(
+            lambda c: re.sub(
+                r'^\d+\.', lambda x: f"[{x.group(0).rstrip('.')}] ", c).strip(),
+            cite_list))
+    return cite_list
+
+# def parse_input(INPUT):

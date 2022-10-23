@@ -22,7 +22,7 @@ The text can be in only one line. Note that each reference should be separated w
 Run the cather to scrape the bibtex from Google Scholar.
 
 ```shell
-python catcher.py -i benson2010network
+python catcher.py benson2010network
 ```
 
 After the catcher finished, there will be output files of benson2010network in `output/benson2010network/` and `recent/`.
@@ -60,7 +60,7 @@ pip install -r requirements.txt
 运行捕手，从谷歌学术中抓取对应文献的 bibtex。
 
 ```shell
-python catcher.py -i benson2010network
+python catcher.py benson2010network
 ```
 运行结束后，benson2010network 的输出文件放在了 `output/benson2010network/` 和 `recent/` 目录下。
 - `ref.bib`: 所有成功找到的文献 bibtex 都在这里。可以用来导入进 Zotero 中。

@@ -2,6 +2,20 @@
 
 [English | [中文](#bib-捕手-🫳)]
 
+## Features
+
+- catch bibtex
+
+```shell
+python catcher.py <citekey/doi>
+```
+
+- generate reference relationship graph
+
+```shell
+python pyecharts.py
+```
+
 ## Usage
 
 ```shell

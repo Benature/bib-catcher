@@ -3,3 +3,4 @@ requests
 bs4
 gscholar
 bibtexparser
+pyecharts==1.9.1

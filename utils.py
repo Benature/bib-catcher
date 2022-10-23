@@ -4,8 +4,7 @@ from bibtexparser.bwriter import BibTexWriter
 import requests
 from bs4 import BeautifulSoup as bs
 
-
-base_path = 'base/all.csv'
+from config import *
 
 
 def check_environment():

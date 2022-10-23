@@ -24,7 +24,7 @@ INPUT = args.input.lstrip('@')
 check_environment()
 
 # parse input
-if os.path.exists(os.path.join('input', INPUT)):
+if os.path.exists(os.path.join('input', INPUT+".txt")):
     print('Read reference list from file')
     CITEKEY = INPUT
     with open(f'input/{CITEKEY}.txt', 'r') as f:
@@ -95,6 +95,8 @@ try:
         if len(bib) == 0:  # empty output
             print("not found 😢")
             fail_try.append(cite_list[i])
+            continue
+
         bib = bib[0]
         bib_db = bibtexparser.loads(bib)
         bib_dict = bib_db.entries[0]

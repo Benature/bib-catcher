@@ -1,22 +1,38 @@
 # bib Catcher 🫳
 
-[English | [中文](#bib-捕手-🫳)]
-
 ## Features
 
-- catch bibtex
+- Catch bibtex
 
 ```shell
 python catcher.py <citekey/doi>
 ```
 
-- generate reference relationship graph
+- Convert reference index to citekey in wikilink format
+
+```shell
+python converter.py <citekey>
+```
+
+example:
+```diff
+- Another line of recent work focuses on designing compact data structures [19,27,44] with tradeoffs between accuracy and resource footprints. 
+- Next, we compare the total storage overhead of SyNDB to that of NetSight [32]. 
+- Recent studies [65] have observed high utilization only across a few switch ports during congestion events.
++ Another line of recent work focuses on designing compact data structures ([[al2008scalable]], [[ghorbani2017drill]], [[li2019deter]]) with tradeoffs between accuracy and resource footprints. 
++ Next, we compare the total storage overhead of SyNDB to that of [[handigol2014know|NetSight]]. 
++ Recent studies ([[zhang2017high]]) have observed high utilization only across a few switch ports during congestion events.
+```
+
+- Generate reference relationship graph
 
 ```shell
 python pyecharts.py
 ```
 
 ## Usage
+
+[English | [中文](#bib-捕手-🫳)]
 
 ```shell
 pip install -r requirements.txt

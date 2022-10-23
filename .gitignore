@@ -1,6 +1,7 @@
 **/__pycache__/
 
-base/
+base/*
+!base/CCF.csv
 output/
 input/
 recent/

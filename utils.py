@@ -34,23 +34,6 @@ def is_same_item(short, long, echo=False):
     return False
 
 
-def check_block(soup):
-    warning_text = 'Our systems have detected unusual traffic from your computer network.'
-
-    title2warn = {
-        'Google 學術搜尋': '請證明您不是自動程式',
-        'Google Scholar': warning_text,
-    }
-    title = soup.head.title.text
-    if title not in title2warn:
-        if warning_text in soup.text:
-            return True
-    if title2warn[title] in soup.text:
-        return True
-
-    return False
-
-
 def enrich_bib(bib_db):
     title = bib_db.entries[0]['title']
     if ':' in title:
@@ -87,5 +70,3 @@ def get_refs_from_url(url):
                 r'^\d+\.', lambda x: f"[{x.group(0).rstrip('.')}] ", c).strip(),
             cite_list))
     return cite_list
-
-# def parse_input(INPUT):

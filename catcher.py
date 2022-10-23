@@ -14,27 +14,27 @@ from utils import *
 # %%
 
 parser = argparse.ArgumentParser()
-parser.add_argument('input', type=str, default="")
+parser.add_argument('source', type=str, default="")
 args = parser.parse_args()
 
-INPUT = args.input.lstrip('@')
+source = args.source.lstrip('@')
 # CITEKEY = '@benson2010network'.lstrip('@')
 
 # %%
 check_environment()
 
 # parse input
-if os.path.exists(os.path.join('input', INPUT+".txt")):
+if os.path.exists(os.path.join('input', source+".txt")):
     print('Read reference list from file')
-    CITEKEY = INPUT
+    CITEKEY = source
     with open(f'input/{CITEKEY}.txt', 'r') as f:
         cites = f.read()
         cites = cites.replace('\n', ' ').strip(' \n') + ' [00]'
         cite_list = re.findall(r'\[\d+\].*?(?= \[\d+\])', cites)
 else:
     print('Get reference list from url/doi')
-    cite_list = get_refs_from_url(INPUT)
-    bibs = query(INPUT)
+    cite_list = get_refs_from_url(source)
+    bibs = query(source)
     assert len(bibs) > 0
     bib_dict = bibtexparser.loads(bibs[0]).entries[0]
     CITEKEY = bib_dict['ID']

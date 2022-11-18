@@ -24,7 +24,7 @@ source = args.source.lstrip('@')
 check_environment()
 
 # parse input
-if os.path.exists(os.path.join('input', source+".txt")):
+if os.path.exists(os.path.join('input', source + ".txt")):
     print('Read reference list from file')
     CITEKEY = source
     with open(f'input/{CITEKEY}.txt', 'r') as f:
@@ -54,7 +54,6 @@ last_fail_ignore = []
 if os.path.exists(fail_ignore_path):
     with open(fail_ignore_path, 'r') as f:
         last_fail_ignore = f.read().split('\n')
-
 
 Cite = namedtuple("Cite", "citekey cidx title")
 
@@ -101,7 +100,8 @@ try:
         bib_db = bibtexparser.loads(bib)
         bib_dict = bib_db.entries[0]
 
-        if not is_same_item(bib_dict['title'], cite, echo=True):  # not same item
+        if not is_same_item(bib_dict['title'], cite,
+                            echo=True):  # not same item
             print("different title 😢")
             fail_ignore.append(cite_list[i])
             continue
@@ -118,7 +118,6 @@ except Exception as e:
 
 # %%
 
-
 # =======================================
 #                收尾工作
 # =======================================
@@ -129,23 +128,24 @@ with open(os.path.join(output_dir, 'title.txt'), 'w') as f:
 with open(os.path.join(output_dir, 'ref.bib'), 'w') as f:
     f.write('\n'.join(bibs))
 
-with open(os.path.join(output_dir, 'fail_try.txt'), 'w', encoding='utf-8') as f:
+with open(os.path.join(output_dir, 'fail_try.txt'), 'w',
+          encoding='utf-8') as f:
     f.write('\n'.join(fail_try))
-
 
 with open(fail_ignore_path, 'w', encoding='utf-8') as f:
     f.write('\n'.join(fail_ignore))
 
-title_df = pd.DataFrame(results)
-if os.path.exists(title_path):
-    title_df_old = pd.read_csv(title_path)
-    title_df = pd.concat([title_df_old, title_df])
-    title_df = title_df.drop_duplicates('cidx', keep='last')
-title_df_cidx = title_df.cidx.astype(int)
-title_df = title_df.drop('cidx', axis=1)
-title_df.insert(0, 'cidx', title_df_cidx)
-title_df = title_df.sort_values('cidx')
-title_df.to_csv(title_path, index=False)
+if len(results) > 0:
+    title_df = pd.DataFrame(results)
+    if os.path.exists(title_path):
+        title_df_old = pd.read_csv(title_path)
+        title_df = pd.concat([title_df_old, title_df])
+        title_df = title_df.drop_duplicates('cidx', keep='last')
+    title_df_cidx = title_df.cidx.astype(int)
+    title_df = title_df.drop('cidx', axis=1)
+    title_df.insert(0, 'cidx', title_df_cidx)
+    title_df = title_df.sort_values('cidx')
+    title_df.to_csv(title_path, index=False)
 
 shutil.rmtree('recent')
 shutil.copytree(output_dir, 'recent')
@@ -156,20 +156,21 @@ new_cites = []
 for cite in results:
     subdf = base_df[base_df.citekey == cite.citekey]
     if len(subdf) == 0:
-        new_cites.append(dict(
-            citekey=cite.citekey,
-            title=cite.title,
-            cite_count=1,
-            cite_by=f'{CITEKEY}({cite.cidx})',
-        ))
+        new_cites.append(
+            dict(
+                citekey=cite.citekey,
+                title=cite.title,
+                cite_count=1,
+                cite_by=f'{CITEKEY}({cite.cidx})',
+            ))
     else:  # exist
         idx = subdf.index[0]
         if CITEKEY in base_df.loc[idx, 'cite_by']:
             continue
         base_df.loc[idx, 'cite_by'] += f';{CITEKEY}({cite.cidx})'
         base_df.loc[idx, 'cite_count'] += 1
-all_df = pd.concat([base_df, pd.DataFrame(new_cites)]).sort_values(
-    ['cite_count', 'citekey'], ascending=False)
+all_df = pd.concat([base_df, pd.DataFrame(new_cites)
+                    ]).sort_values(['cite_count', 'citekey'], ascending=False)
 all_df.to_csv(base_path, index=False)
 
 # %%

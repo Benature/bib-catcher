@@ -18,11 +18,13 @@ def check_environment():
 
 
 def parser(s):
-    replace_pattern = r'[\{\} -]'
+    replace_pattern = r'[\{\} -\.]+'
+    s = re.sub(r'\[\w\]', "", s)
     s = re.findall(r'[^\]]+$', s)[0]
     for k, v in {"’": "'", 'ﬁ': 'fi'}.items():
         s = s.replace(k, v)
-    return re.sub(replace_pattern, '', s).lower()
+    s = re.sub(replace_pattern, '', s).lower()
+    return s
 
 
 def is_same_item(short, long, echo=False):
@@ -57,16 +59,17 @@ def get_refs_from_url(url):
         soup = bs(response.text, 'lxml')
         for i, ref in enumerate(soup.select('.references__item')):
             c = ref.select('.references__note')[0].contents[0]
-            cite_list.append(f"[{i+1}] "+c)
+            cite_list.append(f"[{i+1}] " + c)
     elif 'ieeexplore.ieee' in response.url:
         arnumber = response.url.split('/')[-2]
         ref_url = f"https://ieeexplore.ieee.org/xpl/dwnldReferences?arnumber={arnumber}"
         response = requests.get(ref_url)
         soup = bs(response.text, 'lxml')
-        cite_list = soup.select('body')[0].text.replace(
-            '\t', '').replace('\n\n', '').strip(' \n').split('\n')
-        cite_list = list(map(
-            lambda c: re.sub(
-                r'^\d+\.', lambda x: f"[{x.group(0).rstrip('.')}] ", c).strip(),
-            cite_list))
+        cite_list = soup.select('body')[0].text.replace('\t', '').replace(
+            '\n\n', '').strip(' \n').split('\n')
+        cite_list = list(
+            map(
+                lambda c: re.sub(r'^\d+\.', lambda x:
+                                 f"[{x.group(0).rstrip('.')}] ", c).strip(),
+                cite_list))
     return cite_list

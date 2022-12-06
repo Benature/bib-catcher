@@ -18,9 +18,9 @@ def check_environment():
 
 
 def parser(s):
-    replace_pattern = r'[\{\} -\.]+'
+    replace_pattern = r'[\{\} -\.\?\:]+'
     s = re.sub(r'\[\w\]', "", s)
-    s = re.findall(r'[^\]]+$', s)[0]
+    # s = re.findall(r'[^\]]+$', s)[0]
     for k, v in {"’": "'", 'ﬁ': 'fi'}.items():
         s = s.replace(k, v)
     s = re.sub(replace_pattern, '', s).lower()

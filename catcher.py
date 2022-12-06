@@ -6,6 +6,7 @@ import os
 import shutil
 import traceback
 import argparse
+import time
 from gscholar import query
 import bibtexparser
 
@@ -59,13 +60,12 @@ Cite = namedtuple("Cite", "citekey cidx title")
 
 # %%
 
-try:
-    results = []
-    bibs = []
-    fail_try, fail_ignore = [], []
-    # titles = {}
+results = []
+bibs = []
+fail_try, fail_ignore = [], []
 
-    for i in range(len(cite_list)):
+for i in range(len(cite_list)):
+    try:
         cidx = int(re.findall(r'\[\d+\]', cite_list[i])[0].strip('[]'))
         cite = re.sub(r'\[\d+\]', '', cite_list[i]).strip()
         if cite == "":
@@ -111,10 +111,14 @@ try:
         results.append(Cite(citekey, cidx, bib_dict['title']))
         print("OK ✅", citekey)
 
-    # return titles, bibs, fails
-except Exception as e:
-    print(e)
-    traceback.print_exc()
+    except ConnectionResetError or requests.exceptions.ProxyError:
+        print("Network Error, wait 10s.")
+        time.sleep(10)
+        continue
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        break
 
 # %%
 
@@ -174,3 +178,6 @@ all_df = pd.concat([base_df, pd.DataFrame(new_cites)
 all_df.to_csv(base_path, index=False)
 
 # %%
+
+print("\n" * 2, "==" * 30)
+print("CITEKEY", CITEKEY)

@@ -11,6 +11,14 @@ import json
 from utils import *
 from obsidian import write_note
 
+from functools import partial
+
+
+def cprint(s, c=36):
+    '''color print'''
+    print(f"\033[1;{c}m" + str(s) + "\033[0m")
+
+
 # %%
 
 parser = argparse.ArgumentParser()
@@ -42,17 +50,17 @@ citekey_to_touch = []
 def touch_note(citekey):
     # print("touch", citekey)
     if ob_template is None:
-        print("no template")
+        cprint("no template", 31)
         return
     note_path = os.path.join(obsidian_bse_path, ob_note_path, f"@{citekey}.md")
     # print(note_path)
     if os.path.exists(note_path):
-        print("Note exists:", citekey)
+        cprint(f"[INFO] Note exists: {citekey}")
         return
     md = write_note(citekey, ob_template, zdf)
     if md == "":
         return
-    print("Write new note:", citekey)
+    cprint(f"[INFO] Write new note: {citekey}", 33)
     with open(note_path, 'w') as f:
         f.write(md)
 
@@ -69,7 +77,7 @@ def idx2citekey(r):
             content += idx
         else:
             citekey = cdf.citekey.tolist()[0]
-            content += f"[[{citekey}]]"
+            content += f"[[@{citekey}]]"
             citekey_to_touch.append(citekey)
             # touch_note(citekey)
 
@@ -85,18 +93,22 @@ def idx2citekey(r):
 
 
 # %%
+
 if __name__ == '__main__':
     while True:
-        text = input("Input text:\n")
-        print()
+        cprint("[INFO] Input text: (Double enter to start conversion)")
+        lines = [line for line in iter(partial(input, '>'), '')]
+        text = '\n'.join(lines)
+        # text = input("Input text:\n")
+
+        cprint("Result:", 44)
         output = re.sub(r'([\w\.]+) (\[[\d,]+\])', idx2citekey, text)
         pc.copy(output)
+        cprint(output, 32)
         print()
-        print(output)
-        print()
-        print("The content has been replaced in the clipboard!")
-        print()
+
+        cprint("[INFO] The content has been replaced in the clipboard!")
         for ck in citekey_to_touch:
             touch_note(ck)
         citekey_to_touch = []
-        print("="*30)
+        print("==" * 30)

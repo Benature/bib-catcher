@@ -36,7 +36,7 @@ else:
     print('Get reference list from url/doi')
     cite_list = get_refs_from_url(source)
     bibs = query(source)
-    assert len(bibs) > 0
+    assert len(bibs) > 0, f"Cannot find paper {source}"
     bib_dict = bibtexparser.loads(bibs[0]).entries[0]
     CITEKEY = bib_dict['ID']
     print(f"Paper: {bib_dict['title']} ({CITEKEY})")
@@ -129,7 +129,7 @@ for i in range(len(cite_list)):
 with open(os.path.join(output_dir, 'title.txt'), 'w') as f:
     f.write('\n'.join(cite_list))
 
-with open(os.path.join(output_dir, 'ref.bib'), 'w') as f:
+with open(os.path.join(output_dir, 'ref.bib'), 'a+') as f:
     f.write('\n'.join(bibs))
 
 with open(os.path.join(output_dir, 'fail_try.txt'), 'w',
@@ -150,6 +150,12 @@ if len(results) > 0:
     title_df.insert(0, 'cidx', title_df_cidx)
     title_df = title_df.sort_values('cidx')
     title_df.to_csv(title_path, index=False)
+
+with open(os.path.join(output_dir, "zotero.md"), 'w') as f:
+    f.write("\n".join([
+        f"- [{row.cidx}: {row.title}](zotero://select/items/@{row.citekey})"
+        for _, row in title_df.iterrows()
+    ]))
 
 shutil.rmtree('recent')
 shutil.copytree(output_dir, 'recent')

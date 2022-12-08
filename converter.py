@@ -42,6 +42,9 @@ if os.path.exists(ob_config_path):
 else:
     ob_template = None
 
+with open(os.path.join('output', CITEKEY, 'title.txt'), 'r') as f:
+    title_txt = f.read()
+
 citekey_to_touch = []
 
 
@@ -104,12 +107,24 @@ if __name__ == '__main__':
     while True:
         try:
             cprint("[INFO] Input text: (Double enter to start conversion)")
-            lines = [line for line in iter(partial(input, '>'), '')]
+            lines = []
+            for line in iter(partial(input, '>'), ''):
+                lines.append(line)
+                if re.match(r'\d+', line) is not None:
+                    break
             text = '\n'.join(lines)
 
             if re.match(r'\d+', text) is not None:
-                citekey = idx2citekey(int(text))
-                cprint(f"{citekey}: zotero://select/items/@{citekey}", 36)
+                idx = int(text.strip())
+                citekey = idx2citekey(idx)
+                if citekey != "":
+                    cprint(f"{citekey}: zotero://select/items/@{citekey}", 36)
+                else:
+                    cprint("Unfond citekey")
+                    cite_str = re.findall(
+                        r"(?:^|\n)\[" + str(idx) + r"\].*?(?:\n|$)", title_txt)
+                    if len(cite_str) > 0:
+                        cprint(cite_str[0].strip("\n"), 35)
             else:
                 cprint("Result:", 44)
                 output = re.sub(r'([\w\.]+) (\[[\d,]+\])', note_idx2citekey,
@@ -123,7 +138,7 @@ if __name__ == '__main__':
                 for ck in citekey_to_touch:
                     touch_note(ck)
                 citekey_to_touch = []
-                print("==" * 30)
+            print("\n", "==" * 30, sep="")
         except KeyboardInterrupt:
             print("Bye~")
             break

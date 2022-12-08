@@ -12,11 +12,12 @@ ccf.name = ccf.name.str.replace("IEEE", '').replace("ACM", '')
 
 def get_tag(container, bib):
     find = False
-    doi_az = re.findall(r'[a-zA-Z]+', bib['doi'])
-    if len(doi_az) != 0:
-        abbr = doi_az[0]
-        cdf = ccf[ccf.abbr == abbr]
-        find = len(cdf) != 0
+    if isinstance(bib['doi'], str):
+        doi_az = re.findall(r'[a-zA-Z]+', bib['doi'])
+        if len(doi_az) != 0:
+            abbr = doi_az[0]
+            cdf = ccf[ccf.abbr == abbr]
+            find = len(cdf) != 0
 
     if not find:
         cdf = ccf[ccf.name.apply(lambda x: x in container)]

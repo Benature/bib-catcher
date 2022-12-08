@@ -13,19 +13,17 @@ from obsidian import write_note
 
 from functools import partial
 
-
-def cprint(s, c=36):
-    '''color print'''
-    print(f"\033[1;{c}m" + str(s) + "\033[0m")
-
-
 # %%
 
 parser = argparse.ArgumentParser()
-parser.add_argument('citekey', type=str, default="")
+parser.add_argument('citekey', type=str, default="", nargs='?')
 args = parser.parse_args()
 
 CITEKEY = args.citekey.lstrip('@')
+if CITEKEY == "":
+    with open(os.path.join(base_dir, 'history.txt'), 'r') as f:
+        CITEKEY = f.readlines()[-1]
+        cprint(f"[INFO] Load recent paper: {CITEKEY}")
 
 # %%
 
@@ -65,7 +63,16 @@ def touch_note(citekey):
         f.write(md)
 
 
-def idx2citekey(r):
+def idx2citekey(idx):
+    cdf = df[df.cidx == int(idx)]
+    if len(cdf) == 0:
+        return ""
+    else:
+        citekey = cdf.citekey.tolist()[0]
+        return citekey
+
+
+def note_idx2citekey(r):
     content = ""
     idxs = r.group(2).strip('[]').split(',')
     for idx in idxs:
@@ -79,7 +86,6 @@ def idx2citekey(r):
             citekey = cdf.citekey.tolist()[0]
             content += f"[[@{citekey}]]"
             citekey_to_touch.append(citekey)
-            # touch_note(citekey)
 
     if len(idxs) == 1 and zdf is not None:
         bdf = zdf[zdf.ID == citekey]
@@ -96,19 +102,28 @@ def idx2citekey(r):
 
 if __name__ == '__main__':
     while True:
-        cprint("[INFO] Input text: (Double enter to start conversion)")
-        lines = [line for line in iter(partial(input, '>'), '')]
-        text = '\n'.join(lines)
-        # text = input("Input text:\n")
+        try:
+            cprint("[INFO] Input text: (Double enter to start conversion)")
+            lines = [line for line in iter(partial(input, '>'), '')]
+            text = '\n'.join(lines)
 
-        cprint("Result:", 44)
-        output = re.sub(r'([\w\.]+) (\[[\d,]+\])', idx2citekey, text)
-        pc.copy(output)
-        cprint(output, 32)
-        print()
+            if re.match(r'\d+', text) is not None:
+                citekey = idx2citekey(int(text))
+                cprint(f"{citekey}: zotero://select/items/@{citekey}", 36)
+            else:
+                cprint("Result:", 44)
+                output = re.sub(r'([\w\.]+) (\[[\d,]+\])', note_idx2citekey,
+                                text)
+                pc.copy(output)
+                cprint(output, 36)
+                print()
 
-        cprint("[INFO] The content has been replaced in the clipboard!")
-        for ck in citekey_to_touch:
-            touch_note(ck)
-        citekey_to_touch = []
-        print("==" * 30)
+                cprint(
+                    "[INFO] The content has been replaced in the clipboard!")
+                for ck in citekey_to_touch:
+                    touch_note(ck)
+                citekey_to_touch = []
+                print("==" * 30)
+        except KeyboardInterrupt:
+            print("Bye~")
+            break

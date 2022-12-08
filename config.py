@@ -1,7 +1,11 @@
 import getpass
+import os
+
+root_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Basic
-base_path = 'base/all.csv'
+base_dir = os.path.join(root_dir, 'base')
+base_path = os.path.join(base_dir, 'all.csv')
 
 # Zotero
 zotero_bib_path = '/Library/Zotero/Zotero.bib'

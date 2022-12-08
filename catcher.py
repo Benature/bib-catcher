@@ -187,3 +187,5 @@ all_df.to_csv(base_path, index=False)
 
 print("\n" * 2, "==" * 30)
 print("CITEKEY", CITEKEY)
+with open(os.path.join(base_dir, 'history.txt'), 'a+') as f:
+    f.write(CITEKEY)

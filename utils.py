@@ -52,7 +52,20 @@ def get_refs_from_url(url):
         if 'doi' not in url:
             url = os.path.join("https://doi.org/", url)
 
-    response = requests.get(url)
+    for _retry in range(10):
+        try:
+            response = requests.get(url)
+        except requests.exceptions.ProxyError:
+            print("Failed to get, try again later", end='')
+            import time
+            for i in range(10):
+                time.sleep(1)
+                print(end='.')
+            continue
+        print()
+        if _retry >= 9:
+            os._exit(1)
+        break
 
     cite_list = []
     if 'dl.acm' in response.url:
@@ -73,3 +86,8 @@ def get_refs_from_url(url):
                                  f"[{x.group(0).rstrip('.')}] ", c).strip(),
                 cite_list))
     return cite_list
+
+
+def cprint(s, c=30):
+    '''color print'''
+    print(f"\033[1;{c}m" + str(s) + "\033[0m")

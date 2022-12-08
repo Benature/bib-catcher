@@ -20,10 +20,21 @@ def note_convert():
     converter.load_paper(citekey)
     text = converter.convert_note(req['text'])
 
-    if text == req['text']:
-        data = {"replace": False}
+    detect_citekey_num = len(converter.citekey_to_touch)
+    new_notes = converter.touch_notes()
+
+    notification = f"BIB-CATCHER 🫳\n"
+    if detect_citekey_num > 0:
+        notification += f"😮 Detect {detect_citekey_num} papers."
+        if len(new_notes) > 0:
+            notification += f"\n🆕 Create {len(new_notes)} new notes: {', '.join(new_notes)}"
     else:
-        data = {"text": text, "replace": True}
+        notification += "🙅‍♂️ No paper detected."
+
+    data = {}
+    if text != req['text']:
+        data.update({"text": text})
+    data.update({"notification": notification})
     return Response(json.dumps(data), mimetype='application/json')
 
 

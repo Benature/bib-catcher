@@ -43,18 +43,19 @@ def touch_note(citekey):
     # print("touch", citekey)
     if ob_template is None:
         cprint("no template", 31)
-        return
+        return False
     note_path = os.path.join(obsidian_bse_path, ob_note_path, f"@{citekey}.md")
     # print(note_path)
     if os.path.exists(note_path):
         cprint(f"[INFO] Note exists: {citekey}")
-        return
+        return False
     md = write_note(citekey, ob_template, zdf)
     if md == "":
-        return
+        return False
     cprint(f"[INFO] Write new note: {citekey}", 33)
     with open(note_path, 'w') as f:
         f.write(md)
+    return True
 
 
 class Converter():
@@ -62,6 +63,7 @@ class Converter():
     def __init__(self):
         self.dfs = {}
         self.load_success = False
+        self.citekey_to_touch = set()
         # self.citekey_to_touch = defaultdict(list)
 
     def load_paper(self, paper):
@@ -104,6 +106,8 @@ class Converter():
                     if is_same_item(shorttitle, r.group(1)):
                         return f"[[{citekey}|{shorttitle}]]"
 
+        self.citekey_to_touch = set(self.citekey_to_touch)
+
         if citekey == "":  # no citekey found
             return r.group(0)
         else:
@@ -118,9 +122,13 @@ class Converter():
             return citekey
 
     def touch_notes(self):
+        new_notes = []
         for ck in self.citekey_to_touch:
-            touch_note(ck)
+            t = touch_note(ck)
+            if t:
+                new_notes.append(ck)
         self.citekey_to_touch = []
+        return new_notes
 
     def convert_note(self, text):
         if self.load_success:
@@ -173,8 +181,6 @@ if __name__ == '__main__':
                         cprint(google_scholar_url, 33)
             else:
                 cprint("Result:", 44)
-                # output = re.sub(r'([\w\.]+) (\[[\d,]+\])',
-                #                 converter.note_idx2citekey, text)
                 output = converter.convert_note(text)
                 pc.copy(output)
                 cprint(output, 36)
@@ -183,9 +189,6 @@ if __name__ == '__main__':
                 cprint(
                     "[INFO] The content has been replaced in the clipboard!")
                 converter.touch_notes()
-                # for ck in converter.citekey_to_touch:
-                #     touch_note(ck)
-                # citekey_to_touch = []
             print("\n", "==" * 30, sep="")
         except KeyboardInterrupt:
             print("Bye~")

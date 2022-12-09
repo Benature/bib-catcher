@@ -26,14 +26,14 @@ check_environment()
 
 # parse input
 if os.path.exists(os.path.join('input', source + ".txt")):
-    print('Read reference list from file')
+    print('Reading reference list from file')
     CITEKEY = source
     with open(f'input/{CITEKEY}.txt', 'r') as f:
         cites = f.read()
         cites = cites.replace('\n', ' ').strip(' \n') + ' [00]'
         cite_list = re.findall(r'\[\d+\].*?(?= \[\d+\])', cites)
 else:
-    print('Get reference list from url/doi')
+    print('Getting reference list from url/doi')
     cite_list = get_refs_from_url(source)
     bibs = query(source)
     assert len(bibs) > 0, f"Cannot find paper {source}"
@@ -64,6 +64,10 @@ results = []
 bibs = []
 fail_try, fail_ignore = [], []
 
+if len(cite_list) == 0:
+    cprint("No citation found. Exit.", c=Color.red)
+    os._exit(1)
+
 for i in range(len(cite_list)):
     try:
         cidx = int(re.findall(r'\[\d+\]', cite_list[i])[0].strip('[]'))
@@ -71,12 +75,16 @@ for i in range(len(cite_list)):
         if cite == "":
             continue
 
-        cprint('\n', cidx, "|", cite)
+        cprint(cidx, "|", cite)
 
-        if cite_list[i] in last_fail_ignore:
-            fail_ignore.append(cite_list[i])
-            cprint("[Pass] failed to find this paper before 😩", c=Color.yellow)
+        if "Website [online]" in cite:
+            print("It is a website 😯")
             continue
+
+        # if cite_list[i] in last_fail_ignore:
+        #     fail_ignore.append(cite_list[i])
+        #     cprint("[Pass] failed to find this paper before 😩", c=Color.yellow)
+        #     continue
 
         # check whether the paper exists in base
         duplicate_cites = base_df[base_df.title.apply(
@@ -186,7 +194,7 @@ all_df.to_csv(base_path, index=False)
 
 # %%
 
-print("\n" * 2, "==" * 30, sep='')
+print("\n", "==" * 30, sep='')
 print("CITEKEY", CITEKEY)
 with open(os.path.join(base_dir, 'history.txt'), 'a+') as f:
     f.write(CITEKEY + "\n")

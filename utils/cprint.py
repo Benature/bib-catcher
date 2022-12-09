@@ -1,5 +1,3 @@
-# ref: https://gist.github.com/jrjhealey/1eac73a1d1aa411990ab7bfd4a1687d9
-
 from enum import Enum
 
 Color = Enum(

@@ -113,13 +113,15 @@ class Converter():
         else:
             return r.group(1) + " (" + content + ")"
 
-    def idx2citekey(self, idx):
+    def idx2paper(self, idx):
         cdf = self.df[self.df.cidx == int(idx)]
         if len(cdf) == 0:
-            return ""
+            return None
         else:
-            citekey = cdf.citekey.tolist()[0]
-            return citekey
+            for _, row in cdf.iterrows():
+                return row
+            # citekey = cdf.citekey.tolist()[0]
+            # return citekey
 
     def touch_notes(self):
         new_notes = []
@@ -132,7 +134,7 @@ class Converter():
 
     def convert_note(self, text):
         if self.load_success:
-            return re.sub(r'([\w\.]+) (\[[\d,]+\])', self.note_idx2citekey,
+            return re.sub(r'([^\s]+) (\[[\d,]+\])', self.note_idx2citekey,
                           text)
         else:
             cprint("[WARN]: Load paper failed, return original text.", c=31)
@@ -145,8 +147,8 @@ if __name__ == '__main__':
     CITEKEY = args.citekey.lstrip('@')
     if CITEKEY == "":
         with open(os.path.join(base_dir, 'history.txt'), 'r') as f:
-            CITEKEY = f.readlines()[-1]
-            cprint(f"[INFO] Load recent paper: {CITEKEY}")
+            CITEKEY = f.readlines()[-1].strip('\n')
+            cprint(f"[INFO] Load recent paper: {CITEKEY}", c=Color.yellow)
 
     # df = pd.read_csv(os.path.join('output', CITEKEY, 'title.csv'))
 
@@ -157,7 +159,7 @@ if __name__ == '__main__':
     converter.load_paper(CITEKEY)
     while True:
         try:
-            cprint("[INFO] Input text: (Double enter to start conversion)")
+            cprint("[INFO] Input text: (Double enter to force conversion)")
             lines = []
             for line in iter(partial(input, '>'), ''):
                 lines.append(line)
@@ -167,10 +169,14 @@ if __name__ == '__main__':
 
             if re.match(r'^\d+$', text) is not None:
                 idx = int(text.strip())
-                citekey = converter.idx2citekey(idx)
-                if citekey != "":
-                    cprint(f"{citekey}: zotero://select/items/@{citekey}",
-                           c=36)
+                paper = converter.idx2paper(idx)
+                if paper is not None:
+                    citekey = paper.citekey
+                    cprint(citekey, c=Color.cyan)
+                    cprint(paper.title, c=Color.white, s=Style.bright)
+                    cprint(f"zotero://select/items/@{citekey}",
+                           c=Color.blue,
+                           s=Style.underline)
                 else:
                     cprint("Unfond citekey")
                     cite_str = re.findall(
@@ -179,7 +185,9 @@ if __name__ == '__main__':
                         cite_str = cite_str[0].strip("\n")
                         cprint(cite_str, c=35)
                         google_scholar_url = f"https://scholar.google.com/scholar&q={urllib.parse.quote(cite_str)}&lookup=0&hl=en"
-                        cprint(google_scholar_url, c=33)
+                        cprint(google_scholar_url,
+                               c=Color.blue,
+                               s=Style.underline)
             else:
                 cprint("Result:", c=44)
                 output = converter.convert_note(text)
@@ -192,5 +200,7 @@ if __name__ == '__main__':
                 converter.touch_notes()
             print("\n", "==" * 30, sep="")
         except KeyboardInterrupt:
-            print("Bye~")
-            break
+            # print("Bye~")
+            # break
+            print("")
+            continue

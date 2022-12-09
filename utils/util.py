@@ -32,8 +32,8 @@ def is_same_item(short, long, echo=False):
     if parser(short) in parser(long):
         return True
     elif echo:
-        print('💢', parser(short))
-        print('💥', parser(long))
+        print('💢', short)
+        print('💥', long)
     return False
 
 
@@ -69,7 +69,7 @@ def get_refs_from_url(url):
         break
 
     cite_list = []
-    print(response.url)
+    cprint(response.url, c=Color.blue, s=Style.underline)
     if 'dl.acm' in response.url:
         soup = bs(response.text, 'lxml')
         for i, ref in enumerate(soup.select('.references__item')):
@@ -78,15 +78,25 @@ def get_refs_from_url(url):
     elif 'ieeexplore.ieee' in response.url:
         arnumber = response.url.split('/')[-2]
         ref_url = f"https://ieeexplore.ieee.org/xpl/dwnldReferences?arnumber={arnumber}"
-        response = requests.get(ref_url)
-        soup = bs(response.text, 'lxml')
-        cite_list = soup.select('body')[0].text.replace('\t', '').replace(
-            '\n\n', '').strip(' \n').split('\n')
-        cite_list = list(
-            map(
-                lambda c: re.sub(r'^\d+\.', lambda x:
-                                 f"[{x.group(0).rstrip('.')}] ", c).strip(),
-                cite_list))
+        cprint(ref_url, c=Color.blue, s=Style.underline)
+        headers = {
+            "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.41",
+        }
+        response = requests.get(ref_url, headers=headers)
+        if response.status_code == 200:
+            soup = bs(response.text, 'lxml')
+            cite_list = soup.select('body')[0].text.replace('\t', '').replace(
+                '\n\n', '').strip(' \n').split('\n')
+            cite_list = list(
+                map(
+                    lambda c: re.sub(r'^\d+\.', lambda x:
+                                     f"[{x.group(0).rstrip('.')}] ", c).strip(
+                                     ), cite_list))
+        else:
+            print(response.status_code)
+            print(response.text)
+        print()
     return cite_list
 
 

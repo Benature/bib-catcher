@@ -57,7 +57,7 @@ def write_note(citekey, template, bdf):
     md = md.replace("{{zoteroSelectURI}}", f"zotero://select/items/@{citekey}")
     md = md.replace(
         "{{#each entry.author}} [[{{given}} {{family}}]],{{/each}}", ",".join(
-            map(lambda x: " [[" + x.strip() + "]]",
+            map(lambda x: " [[" + re.sub(r'[\{\}]', '', x.strip()) + "]]",
                 bib['author'].replace(',', '').split('and'))))
     md = md.replace("tags: \n", f"tags: {get_tag(container, bib)}\n")
     for k, v in bib.items():

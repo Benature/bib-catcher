@@ -3,32 +3,34 @@
 ## Features
 
 - Catch bibtex
-
-```shell
-python catcher.py <citekey/doi>
-```
+    ```shell
+    python catcher.py <citekey/doi>
+    ```
 
 - Convert reference index to citekey in wikilink format
+    `<citekey>` is optional. If no citekey is provided, it will load the last caught paper.
+    ```shell
+    python converter.py <citekey>
+    ```
+    example:
+    ```diff
+    - Another line of recent work focuses on designing compact data structures [19,27,44] with tradeoffs between accuracy and resource footprints. 
+    - Next, we compare the total storage overhead of SyNDB to that of NetSight [32]. 
+    - Recent studies [65] have observed high utilization only across a few switch ports during congestion events.
+    + Another line of recent work focuses on designing compact data structures ([[al2008scalable]], [[ghorbani2017drill]], [[li2019deter]]) with tradeoffs between accuracy and resource footprints. 
+    + Next, we compare the total storage overhead of SyNDB to that of [[handigol2014know|NetSight]]. 
+    + Recent studies ([[zhang2017high]]) have observed high utilization only across a few switch ports during congestion events.
+    ```
 
-```shell
-python converter.py <citekey>
-```
-
-example:
-```diff
-- Another line of recent work focuses on designing compact data structures [19,27,44] with tradeoffs between accuracy and resource footprints. 
-- Next, we compare the total storage overhead of SyNDB to that of NetSight [32]. 
-- Recent studies [65] have observed high utilization only across a few switch ports during congestion events.
-+ Another line of recent work focuses on designing compact data structures ([[al2008scalable]], [[ghorbani2017drill]], [[li2019deter]]) with tradeoffs between accuracy and resource footprints. 
-+ Next, we compare the total storage overhead of SyNDB to that of [[handigol2014know|NetSight]]. 
-+ Recent studies ([[zhang2017high]]) have observed high utilization only across a few switch ports during congestion events.
-```
+- Rest API server *(via Flask)*
+    ```shell
+    python api.py
+    ```
 
 - Generate reference relationship graph
-
-```shell
-python pyecharts.py
-```
+    ```shell
+    python pyecharts.py
+    ```
 
 ## Usage
 
@@ -61,15 +63,15 @@ After the catcher finished, there will be output files of benson2010network in `
 - `title.txt`: The reference separated in each line, you can check whether the regular expression parse the **Reference** text as you want.
 - `title.csv`: A table containing the index of reference in the paper and the reference's name. It may be helpful when you want to know what exactly reference the main boby cites, avoiding rolling back the end of paper (**Reference**).
 
----
-# bib 捕手 🫳
-[[English](#bib-catcher-🫳) | 中文]
 ### Notes
 
 - There is a file (`base/all.csv`) that contains all caught reference in history, so that the code can avoid repeat searching same paper in Google Scholar.
-- There is some `sleep()` in the code, so as to avoid being blocked by Google Scholar too soon.
 - If the `output/` folder contains too many references, you can quickly get the output in `recent/`.
 
+
+---
+# bib 捕手 🫳
+[[English](#bib-catcher-🫳) | 中文]
 
 ## 使用
 
@@ -101,5 +103,4 @@ python catcher.py benson2010network
 ### 其他说明
 
 - 有一个文件 `base/all.csv` 存储了所有的文献 bibtex 查找历史记录，这样可以避免在谷歌学术中重复搜索相同的已知文献。
-- 代码中有 `sleep()` 函数，目的是防止太快被谷歌学术检测出是爬虫然后被拉黑。
 - 如果 `output/` 目录放置了太多的文献资料，最近一次的输出信息可以直接在 `recent/` 中找到。

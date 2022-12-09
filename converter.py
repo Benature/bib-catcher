@@ -120,8 +120,6 @@ class Converter():
         else:
             for _, row in cdf.iterrows():
                 return row
-            # citekey = cdf.citekey.tolist()[0]
-            # return citekey
 
     def touch_notes(self):
         new_notes = []

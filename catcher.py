@@ -10,7 +10,7 @@ import time
 from gscholar import query
 import bibtexparser
 
-from utils import *
+from utils.util import *
 
 # %%
 
@@ -71,11 +71,11 @@ for i in range(len(cite_list)):
         if cite == "":
             continue
 
-        print('\n', cidx, "|", cite)
+        cprint('\n', cidx, "|", cite)
 
         if cite_list[i] in last_fail_ignore:
             fail_ignore.append(cite_list[i])
-            print("[Pass] failed to find this paper before 😩")
+            cprint("[Pass] failed to find this paper before 😩", c=Color.yellow)
             continue
 
         # check whether the paper exists in base
@@ -85,14 +85,14 @@ for i in range(len(cite_list)):
             dc = duplicate_cites.reset_index()
             # titles[cidx] = dc.title[0]
             results.append(Cite(dc.citekey[0], cidx, dc.title[0]))
-            print("[Pass] bibtex is exist. 💾")
+            cprint("[Pass] bibtex is exist. 💾", c=Color.cyan, s=Style.faded)
             continue
 
         # query google scholar
         bib = query(cite)
 
         if len(bib) == 0:  # empty output
-            print("not found 😢")
+            cprint("not found 😢", c=Color.red)
             fail_try.append(cite_list[i])
             continue
 
@@ -102,7 +102,7 @@ for i in range(len(cite_list)):
 
         if not is_same_item(bib_dict['title'], cite,
                             echo=True):  # not same item
-            print("different title 😢")
+            cprint("different title 😢", c=Color.red)
             fail_ignore.append(cite_list[i])
             continue
 
@@ -118,6 +118,7 @@ for i in range(len(cite_list)):
     except Exception as e:
         print(e)
         traceback.print_exc()
+        print(cite_list[i])
         break
 
 # %%
@@ -151,11 +152,11 @@ if len(results) > 0:
     title_df = title_df.sort_values('cidx')
     title_df.to_csv(title_path, index=False)
 
-with open(os.path.join(output_dir, "zotero.md"), 'w') as f:
-    f.write("\n".join([
-        f"- [{row.cidx}: {row.title}](zotero://select/items/@{row.citekey})"
-        for _, row in title_df.iterrows()
-    ]))
+    with open(os.path.join(output_dir, "zotero.md"), 'w') as f:
+        f.write("\n".join([
+            f"- [{row.cidx}: {row.title}](zotero://select/items/@{row.citekey})"
+            for _, row in title_df.iterrows()
+        ]))
 
 shutil.rmtree('recent')
 shutil.copytree(output_dir, 'recent')
@@ -185,7 +186,8 @@ all_df.to_csv(base_path, index=False)
 
 # %%
 
-print("\n" * 2, "==" * 30)
+print("\n" * 2, "==" * 30, sep='')
 print("CITEKEY", CITEKEY)
 with open(os.path.join(base_dir, 'history.txt'), 'a+') as f:
-    f.write(CITEKEY)
+    f.write(CITEKEY + "\n")
+# %%

@@ -9,8 +9,8 @@ import pyperclip as pc
 import json
 from collections import defaultdict
 
-from utils import *
-from obsidian import write_note
+from utils.util import *
+from utils.obsidian import write_note
 
 from functools import partial
 
@@ -52,7 +52,7 @@ def touch_note(citekey):
     md = write_note(citekey, ob_template, zdf)
     if md == "":
         return False
-    cprint(f"[INFO] Write new note: {citekey}", 33)
+    cprint(f"[INFO] Write new note: {citekey}", c=33)
     with open(note_path, 'w') as f:
         f.write(md)
     return True
@@ -135,7 +135,7 @@ class Converter():
             return re.sub(r'([\w\.]+) (\[[\d,]+\])', self.note_idx2citekey,
                           text)
         else:
-            cprint("[WARN]: Load paper failed, return original text.", 31)
+            cprint("[WARN]: Load paper failed, return original text.", c=31)
             return text
 
 
@@ -169,21 +169,22 @@ if __name__ == '__main__':
                 idx = int(text.strip())
                 citekey = converter.idx2citekey(idx)
                 if citekey != "":
-                    cprint(f"{citekey}: zotero://select/items/@{citekey}", 36)
+                    cprint(f"{citekey}: zotero://select/items/@{citekey}",
+                           c=36)
                 else:
                     cprint("Unfond citekey")
                     cite_str = re.findall(
                         r"(?:^|\n)\[" + str(idx) + r"\].*?(?:\n|$)", title_txt)
                     if len(cite_str) > 0:
                         cite_str = cite_str[0].strip("\n")
-                        cprint(cite_str, 35)
+                        cprint(cite_str, c=35)
                         google_scholar_url = f"https://scholar.google.com/scholar&q={urllib.parse.quote(cite_str)}&lookup=0&hl=en"
-                        cprint(google_scholar_url, 33)
+                        cprint(google_scholar_url, c=33)
             else:
-                cprint("Result:", 44)
+                cprint("Result:", c=44)
                 output = converter.convert_note(text)
                 pc.copy(output)
-                cprint(output, 36)
+                cprint(output, c=36)
                 print()
 
                 cprint(

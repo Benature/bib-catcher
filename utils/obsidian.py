@@ -1,12 +1,16 @@
 import getpass
 import json
 import re
+import os
 import requests
 
 import bibtexparser
 import pandas as pd
 
-ccf = pd.read_csv('base/CCF.csv')
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ccf_path = os.path.join(root_dir, "base/CCF.csv")
+
+ccf = pd.read_csv(ccf_path)
 ccf.name = ccf.name.str.replace("IEEE", '').replace("ACM", '')
 
 

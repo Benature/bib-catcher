@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 
 from config import *
+from .cprint import *
 
 
 def check_environment():
@@ -68,6 +69,7 @@ def get_refs_from_url(url):
         break
 
     cite_list = []
+    print(response.url)
     if 'dl.acm' in response.url:
         soup = bs(response.text, 'lxml')
         for i, ref in enumerate(soup.select('.references__item')):
@@ -88,6 +90,12 @@ def get_refs_from_url(url):
     return cite_list
 
 
-def cprint(s, c=30):
+def cprint(*args, c=30, s=Style.bright, b=None, sep=' ', end='\n'):
     '''color print'''
-    print(f"\033[1;{c}m" + str(s) + "\033[0m")
+    string = sep.join(map(str, args))
+    if isinstance(c, int):
+        string = f"\033[1;{c}m" + string + "\033[0m"
+    else:
+        f = get_cprint_format(c, s, b)
+        string = f.format(string)
+    print(string, end=end)

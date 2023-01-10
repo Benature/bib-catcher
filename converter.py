@@ -7,6 +7,7 @@ from gscholar import query
 import bibtexparser
 import pyperclip as pc
 import json
+from math import floor
 from collections import defaultdict
 
 from utils.util import *
@@ -82,10 +83,29 @@ class Converter():
         return True
 
     def note_idx2citekey(self, r):
+        '''
+        @r: re match object
+        '''
         self.citekey_to_touch = []
         content = ""
         citekey = ""
-        idxs = r.group(2).strip('[]').split(',')
+        MAX_IDX = self.df.cidx.max()
+        idxs_raw = r.group(1).strip('[] ').split(',')
+        idxs = []
+        for idx in idxs_raw:
+            connecter = r'[\-–]'
+            if re.search(connecter, idx):
+                start, end = re.split(connecter, idx)
+                idxs += list(range(int(start), int(end) + 1))
+            else:
+                if int(idx) > MAX_IDX:
+                    idx = str(idx).strip()
+                    start_len = floor(len(idx) / 2)
+                    start, end = idx[:start_len], idx[start_len:]
+                    idxs += list(range(int(start), int(end) + 1))
+                else:
+                    idxs.append(int(idx))
+
         for idx in idxs:
             cdf = self.df[self.df.cidx == int(idx)]
             if content != "":  # not the first one
@@ -111,7 +131,7 @@ class Converter():
         if citekey == "":  # no citekey found
             return r.group(0)
         else:
-            return r.group(1) + " (" + content + ")"
+            return "(" + content + ")"
 
     def idx2paper(self, idx):
         cdf = self.df[self.df.cidx == int(idx)]
@@ -132,8 +152,9 @@ class Converter():
 
     def convert_note(self, text):
         if self.load_success:
-            return re.sub(r'([^\s]+) (\[[\d,]+\])', self.note_idx2citekey,
-                          text)
+            pattern = r'(?:[^\s]+) (\[[\d, \-–]+\])'
+            # print(re.findall(pattern, text))
+            return re.sub(pattern, self.note_idx2citekey, text)
         else:
             cprint("[WARN]: Load paper failed, return original text.", c=31)
             return text

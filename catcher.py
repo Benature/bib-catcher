@@ -25,10 +25,10 @@ source = args.source.lstrip('@')
 check_environment()
 
 # parse input
-if os.path.exists(os.path.join('input', source + ".txt")):
+if os.path.exists(os.path.join(root_dir, 'input', source + ".txt")):
     print('Reading reference list from file')
     CITEKEY = source
-    with open(f'input/{CITEKEY}.txt', 'r') as f:
+    with open(os.path.join(root_dir, f'input/{CITEKEY}.txt'), 'r') as f:
         cites = f.read()
         cites = cites.replace('\n', ' ').strip(' \n') + ' [00]'
         cite_list = re.findall(r'\[\d+\].*?(?= \[\d+\])', cites)
@@ -42,7 +42,7 @@ else:
     print(f"Paper: {bib_dict['title']} ({CITEKEY})")
 
 # output dir
-output_dir = os.path.join('output', CITEKEY)
+output_dir = os.path.join(root_dir, 'output', CITEKEY)
 os.makedirs(output_dir, exist_ok=True)
 
 title_path = os.path.join(output_dir, 'title.csv')

@@ -131,7 +131,7 @@ class Converter():
         if citekey == "":  # no citekey found
             return r.group(0)
         else:
-            return "(" + content + ")"
+            return r.group(0).replace(r.group(1), "{" + content + "}")
 
     def idx2paper(self, idx):
         cdf = self.df[self.df.cidx == int(idx)]

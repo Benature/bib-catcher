@@ -32,7 +32,7 @@ else:
     zdf = None
 
 print("Loading Citation plugin configuration...")
-ob_config_path = os.path.join(obsidian_bse_path, ob_citation_plugin_path)
+ob_config_path = os.path.join(obsidian_base_path, ob_citation_plugin_path)
 if os.path.exists(ob_config_path):
     with open(ob_config_path, 'r') as f:
         ob_template = json.loads(f.read())['literatureNoteContentTemplate']
@@ -40,12 +40,16 @@ else:
     ob_template = None
 
 
+def gen_note_path(citekey):
+    return os.path.join(obsidian_base_path, ob_note_path, f"@{citekey}.md")
+
+
 def touch_note(citekey):
     # print("touch", citekey)
     if ob_template is None:
         cprint("no template", 31)
         return False
-    note_path = os.path.join(obsidian_bse_path, ob_note_path, f"@{citekey}.md")
+    note_path = gen_note_path(citekey)
     # print(note_path)
     if os.path.exists(note_path):
         cprint(f"[INFO] Note exists: {citekey}")
@@ -57,6 +61,28 @@ def touch_note(citekey):
     with open(note_path, 'w') as f:
         f.write(md)
     return True
+
+
+def get_alias_from_ob_note(citekey):
+    note_path = gen_note_path(citekey)
+    if not os.path.exists(note_path):
+        return ""
+    with open(note_path, "r") as f:
+        note_content = f.read()
+    alias = re.findall(r"^---[\s\S]*?\nalias *: *(.*?)\n[\s\S]*?---\n",
+                       note_content)[0]
+    alias = alias.strip()
+    if alias != "":
+        return f"[[@{citekey}|{alias}]]"
+    return ""
+
+
+def get_shorttitle_from_zotero(citekey):
+    bdf = zdf[zdf.ID == citekey]
+    if len(bdf) != 0 and pd.notna(bdf.shorttitle.tolist()[0]):
+        shorttitle = re.sub('[{}]', '', bdf.shorttitle.tolist()[0])
+        return f"[[@{citekey}|{shorttitle}]]"
+    return ""
 
 
 class Converter():
@@ -115,16 +141,15 @@ class Converter():
                 content += f"[{idx}]"
             else:
                 citekey = cdf.citekey.tolist()[0]
-                content += f"[[@{citekey}]]"
                 self.citekey_to_touch.append(citekey)
 
-        if len(idxs) == 1 and zdf is not None:
-            bdf = zdf[zdf.ID == citekey]
-            if len(bdf) != 0:
-                if pd.notna(bdf.shorttitle.tolist()[0]):
-                    shorttitle = re.sub('[{}]', '', bdf.shorttitle.tolist()[0])
-                    if is_same_item(shorttitle, r.group(1)):
-                        return f"[[{citekey}|{shorttitle}]]"
+                # find paper alias
+                new_text = get_alias_from_ob_note(citekey)
+                if new_text == "":
+                    new_text = get_shorttitle_from_zotero(citekey)
+                if new_text == "":
+                    new_text = f"[[@{citekey}]]"
+                content += new_text
 
         self.citekey_to_touch = set(self.citekey_to_touch)
 

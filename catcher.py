@@ -9,10 +9,13 @@ import argparse
 import time
 from gscholar import query
 import bibtexparser
+import subprocess
 
 from utils.util import *
 
 # %%
+
+ALL_FINISH = True
 
 parser = argparse.ArgumentParser()
 parser.add_argument('source', type=str, default="")
@@ -23,6 +26,13 @@ source = args.source.lstrip('@')
 
 # %%
 check_environment()
+
+print("Loading Zotero database...")
+if os.path.exists(zotero_bib_path):
+    with open(zotero_bib_path, "r") as f:
+        zdf = pd.DataFrame(bibtexparser.load(f).entries)
+else:
+    zdf = None
 
 # parse input
 if os.path.exists(os.path.join(root_dir, 'input', source + ".txt")):
@@ -62,6 +72,7 @@ Cite = namedtuple("Cite", "citekey cidx title")
 
 results = []
 bibs = []
+new_bibs = []
 fail_try, fail_ignore = [], []
 
 if len(cite_list) == 0:
@@ -117,6 +128,8 @@ for i in range(len(cite_list)):
         bibs.append(enrich_bib(bib_db))
         citekey = bib_dict['ID']
         results.append(Cite(citekey, cidx, bib_dict['title']))
+        if zdf is not None and len(zdf[zdf.ID == citekey]) == 0:
+            new_bibs.append(enrich_bib(bib_db))
         print("OK ✅", citekey)
 
     except ConnectionResetError or requests.exceptions.ProxyError:
@@ -127,6 +140,7 @@ for i in range(len(cite_list)):
         print(e)
         traceback.print_exc()
         print(cite_list[i])
+        ALL_FINISH = False
         break
 
 # %%
@@ -135,11 +149,11 @@ for i in range(len(cite_list)):
 #                收尾工作
 # =======================================
 
+with open(os.path.join(output_dir, 'all_ref.bib'), 'a+') as f:
+    f.write('\n'.join(bibs))
+
 with open(os.path.join(output_dir, 'title.txt'), 'w') as f:
     f.write('\n'.join(cite_list))
-
-with open(os.path.join(output_dir, 'ref.bib'), 'a+') as f:
-    f.write('\n'.join(bibs))
 
 with open(os.path.join(output_dir, 'fail_try.txt'), 'w',
           encoding='utf-8') as f:
@@ -199,3 +213,10 @@ print("CITEKEY", CITEKEY)
 with open(os.path.join(base_dir, 'history.txt'), 'a+') as f:
     f.write(CITEKEY + "\n")
 # %%
+
+if len(new_bibs) > 0:
+    with open(os.path.join(output_dir, 'new_refs.bib'), 'w') as f:
+        f.write('\n'.join(bibs))
+    subprocess.Popen(
+        ["open", "-a", "Zotero.app",
+         os.path.join(output_dir, 'new_refs.bib')]).wait()  # macOS

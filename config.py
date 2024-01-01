@@ -1,7 +1,8 @@
 import getpass
 import os
+from pathlib import Path
 
-root_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = Path(__file__).parent
 
 # Basic
 base_dir = os.path.join(root_dir, 'base')

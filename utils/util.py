@@ -95,7 +95,7 @@ def get_refs_from_url(url):
                                      ), cite_list))
         else:
             print(response.status_code)
-            print(response.text)
+            # print(response.text)
         print()
     return cite_list
 

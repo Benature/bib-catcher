@@ -3,19 +3,16 @@ import re
 import pandas as pd
 import os
 import argparse
-from gscholar import query
 import bibtexparser
 import pyperclip as pc
 import json
 from math import floor
-from collections import defaultdict
+import urllib.parse
+from functools import partial
 
 from utils.util import *
 from utils.obsidian import write_note
-
-from functools import partial
-
-import urllib.parse
+from utils.markdown import MarkdownMetadataHandler
 
 # %%
 
@@ -41,18 +38,18 @@ else:
 
 
 def gen_note_path(citekey):
-    return os.path.join(obsidian_base_path, ob_note_path, f"@{citekey}.md")
+    return Path(obsidian_base_path, ob_note_path, f"@{citekey}.md")
 
 
 def touch_note(citekey):
-    # print("touch", citekey)
+    print("touch", citekey)
     if ob_template is None:
         cprint("no template", 31)
         return False
     note_path = gen_note_path(citekey)
     # print(note_path)
     if os.path.exists(note_path):
-        cprint(f"[INFO] Note exists: {citekey}")
+        cprint(f"[INFO] Note already exists: {citekey}")
         return False
     md = write_note(citekey, ob_template, zdf)
     if md == "":
@@ -64,17 +61,30 @@ def touch_note(citekey):
 
 
 def get_alias_from_ob_note(citekey):
+    """get alias from obsidian note
+
+    Args:
+        citekey (str): 
+
+    Returns:
+        link: link to note
+        alias(es): string | List[string]
+    """
     note_path = gen_note_path(citekey)
-    if not os.path.exists(note_path):
-        return ""
-    with open(note_path, "r") as f:
-        note_content = f.read()
-    alias = re.findall(r"^---[\s\S]*?\nalias *: *(.*?)\n[\s\S]*?---\n",
-                       note_content)[0]
-    alias = alias.strip()
-    if alias != "":
-        return f"[[@{citekey}|{alias}]]"
-    return ""
+    if note_path.exists():
+        handler = MarkdownMetadataHandler(note_path)
+        meta = handler.extract_metadata()
+        aliases = []
+        if "alias" in meta:
+            aliases.append(meta["alias"])
+        if "aliases" in meta:
+            aliases += meta["aliases"]
+
+        if aliases:
+            return f"[[@{citekey}|{aliases[0]}]]", aliases
+    else:
+        cprint(f"[WARN]: Cannot find note of {citekey}, ignored.", c=31)
+    return "", []
 
 
 def get_shorttitle_from_zotero(citekey):
@@ -91,13 +101,12 @@ class Converter():
         self.dfs = {}
         self.load_success = False
         self.citekey_to_touch = set()
-        # self.citekey_to_touch = defaultdict(list)
 
     def load_paper(self, paper):
         '''paper CITEKEY'''
         paper = paper.lstrip('@')
         if paper not in self.dfs:
-            paper_path = os.path.join(root_dir, 'output', paper, 'title.csv')
+            paper_path = root_dir / 'output' / paper / 'title.csv'
             if os.path.exists(paper_path):
                 self.dfs[paper] = pd.read_csv(paper_path)
             else:
@@ -112,11 +121,15 @@ class Converter():
         '''
         @r: re match object
         '''
-        self.citekey_to_touch = []
         content = ""
         citekey = ""
         MAX_IDX = self.df.cidx.max()
-        idxs_raw = r.group(1).strip('[] ').split(',')
+
+        pre_str = r.group('pre') or r.group('pre_cn')
+        match_str = r.group('idx') or r.group('idx_cn')
+        print(pre_str, match_str)
+
+        idxs_raw = re.split(r'[,，]', match_str.strip('[]【】 '))
         idxs = []
         for idx in idxs_raw:
             connecter = r'[\-–]'
@@ -132,6 +145,7 @@ class Converter():
                 else:
                     idxs.append(int(idx))
 
+        cite_valid_num = 0
         for idx in idxs:
             cdf = self.df[self.df.cidx == int(idx)]
             if content != "":  # not the first one
@@ -141,22 +155,35 @@ class Converter():
                 content += f"[{idx}]"
             else:
                 citekey = cdf.citekey.tolist()[0]
-                self.citekey_to_touch.append(citekey)
+                self.citekey_to_touch.add(citekey)
 
                 # find paper alias
-                new_text = get_alias_from_ob_note(citekey)
+                new_text, aliases = get_alias_from_ob_note(citekey)
                 if new_text == "":
                     new_text = get_shorttitle_from_zotero(citekey)
                 if new_text == "":
                     new_text = f"[[@{citekey}]]"
                 content += new_text
-
-        self.citekey_to_touch = set(self.citekey_to_touch)
+                cite_valid_num += 1
 
         if citekey == "":  # no citekey found
             return r.group(0)
         else:
-            return r.group(0).replace(r.group(1), "{" + content + "}")
+            whole_str = r.group(0)
+            if cite_valid_num > 1:
+                content = "{" + content + "}"
+            else:  # only one citation
+                for alias in aliases:
+                    alias_m = re.search(alias, pre_str, re.IGNORECASE)
+                    if alias_m is not None:
+                        new_pre = pre_str.replace(
+                            alias_m.group(),
+                            f"[[@{citekey}|{alias_m.group().strip()}]]")
+                        whole_str = whole_str.replace(pre_str,
+                                                      new_pre.rstrip())
+                        content = ""
+                        break
+            return whole_str.replace(match_str, content)
 
     def idx2paper(self, idx):
         cdf = self.df[self.df.cidx == int(idx)]
@@ -172,13 +199,13 @@ class Converter():
             t = touch_note(ck)
             if t:
                 new_notes.append(ck)
-        self.citekey_to_touch = []
+        self.citekey_to_touch = set()
         return new_notes
 
     def convert_note(self, text):
         if self.load_success:
-            pattern = r'(?:[^\s]+) (\[[\d, \-–]+\])'
-            # print(re.findall(pattern, text))
+            pattern = r'(?P<pre>[^\s]+ )(?P<idx>\[[\d, \-–]+\])|(?P<pre_cn>[^\s【】]+? ?)(?P<idx_cn>[\[【][\d, ，\-–]+?[】\]])'
+            print(re.findall(pattern, text))
             return re.sub(pattern, self.note_idx2citekey, text)
         else:
             cprint("[WARN]: Load paper failed, return original text.", c=31)

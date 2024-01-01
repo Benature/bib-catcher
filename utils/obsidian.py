@@ -30,7 +30,8 @@ def get_tag(container, bib):
     if find:
         level = cdf.level.tolist()[0]
         abbr = cdf.abbr.tolist()[0]
-        return f"A/CCF/{level}/{abbr}/{bib['year'][-2:]}"
+        if " " not in abbr.strip():
+            return f"A/CCF/{level}/{abbr}/{bib['year'][-2:]}"
     return ""
 
 
@@ -50,10 +51,13 @@ def write_note(citekey, template, bdf):
     md = md.replace("{{containerTitle}}", container)
     md = md.replace("{{titleShort}}",
                     bib['shorttitle'] if pd.notna(bib['shorttitle']) else "")
+    try:
+        doi_url = requests.get("https://doi.org/" + str(bib['doi'])).url
+    except requests.exceptions.ProxyError:
+        doi_url = ""
     md = md.replace(
         "{{#if URL}}{{URL}}{{else}}{{#if DOI}}https://doi.org/{{DOI}}{{/if}}{{/if}}",
-        requests.get("https://doi.org/" +
-                     bib['doi']).url if pd.notna(bib['doi']) else "")
+        doi_url if pd.notna(bib['doi']) else "")
     md = md.replace("{{zoteroSelectURI}}", f"zotero://select/items/@{citekey}")
     md = md.replace(
         "{{#each entry.author}} [[{{given}} {{family}}]],{{/each}}", ",".join(

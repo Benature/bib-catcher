@@ -97,6 +97,8 @@ def get_refs_from_url(url):
             print(response.status_code)
             # print(response.text)
         print()
+    elif "elsevier" in response.url:
+        print("Not support yet: elsevier")
     return cite_list
 
 

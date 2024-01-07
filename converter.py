@@ -9,6 +9,8 @@ import json
 from math import floor
 import urllib.parse
 from functools import partial
+import subprocess
+import sys
 
 from utils.util import *
 from utils.obsidian import write_note
@@ -18,6 +20,7 @@ from utils.markdown import MarkdownMetadataHandler
 
 parser = argparse.ArgumentParser()
 parser.add_argument('citekey', type=str, default="", nargs='?')
+parser.add_argument('--command', type=str, default="convert", required=False)
 args = parser.parse_args()
 
 # %%
@@ -77,8 +80,11 @@ def get_alias_from_ob_note(citekey):
         aliases = []
         if "alias" in meta:
             aliases.append(meta["alias"])
-        if "aliases" in meta:
+        if "aliases" in meta and meta["aliases"] is not None:
             aliases += meta["aliases"]
+
+        while None in aliases:
+            aliases.remove(None)
 
         if aliases:
             return f"[[@{citekey}|{aliases[0]}]]", aliases
@@ -127,7 +133,6 @@ class Converter():
 
         pre_str = r.group('pre') or r.group('pre_cn')
         match_str = r.group('idx') or r.group('idx_cn')
-        print(pre_str, match_str)
 
         idxs_raw = re.split(r'[,，]', match_str.strip('[]【】 '))
         idxs = []
@@ -194,13 +199,22 @@ class Converter():
                 return row
 
     def touch_notes(self):
-        new_notes = []
-        for ck in self.citekey_to_touch:
-            t = touch_note(ck)
-            if t:
-                new_notes.append(ck)
+        # new_notes = []
+        citekeys = ",".join(self.citekey_to_touch)
+        subprocess.Popen(
+            ["python3",
+             str(__file__), citekeys, "--command", "touch"])
+        # for ck in self.citekey_to_touch:
+        # if self.api_dict is None:
+        # else:
+        #     url = f"http://{self.api_dict['ip']}:{self.api_dict['port']}/touch"
+        #     print(url)
+        #     requests.post(url, json={"citekey": ck})
+        # t = touch_note(ck)
+        # if t:
+        #     new_notes.append(ck)
         self.citekey_to_touch = set()
-        return new_notes
+        # return new_notes
 
     def convert_note(self, text):
         if self.load_success:
@@ -216,12 +230,19 @@ class Converter():
 
 if __name__ == '__main__':
     CITEKEY = args.citekey.lstrip('@')
+    if args.command == 'convert':
+        pass
+    elif args.command == "touch":
+        for ck in CITEKEY.split(","):
+            touch_note(ck)
+        print(">", end="")
+        sys.exit(0)
+    else:
+        raise Warning("Unknown command:", args.command)
     if CITEKEY == "":
         with open(os.path.join(base_dir, 'history.txt'), 'r') as f:
             CITEKEY = f.readlines()[-1].strip('\n')
             cprint(f"[INFO] Load recent paper: {CITEKEY}", c=Color.yellow)
-
-    # df = pd.read_csv(os.path.join('output', CITEKEY, 'title.csv'))
 
     with open(os.path.join('output', CITEKEY, 'title.txt'), 'r') as f:
         title_txt = f.read()
@@ -230,7 +251,9 @@ if __name__ == '__main__':
     converter.load_paper(CITEKEY)
     while True:
         try:
-            cprint("[INFO] Input text: (Double enter to force conversion)")
+            cprint(
+                "[INFO] Input text: (Double enter to start conversion, Ctrl+D to quit)"
+            )
             lines = []
             for line in iter(partial(input, '>'), ''):
                 lines.append(line)

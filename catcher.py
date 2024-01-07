@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('source', type=str, default="")
 args = parser.parse_args()
 
-source = args.source.lstrip('@')
+source = args.source.lstrip('@').strip("\n")
 # CITEKEY = '@benson2010network'.lstrip('@')
 
 # %%
@@ -111,7 +111,7 @@ for i in range(len(cite_list)):
         bib = query(cite)
 
         if len(bib) == 0:  # empty output
-            cprint("not found 😢", c=Color.red)
+            cprint("😭 not found", c=Color.red)
             fail_try.append(cite_list[i])
             continue
 
@@ -121,7 +121,7 @@ for i in range(len(cite_list)):
 
         if not is_same_item(bib_dict['title'], cite,
                             echo=True):  # not same item
-            cprint("different title 😢", c=Color.red)
+            cprint("😢 different title", c=Color.red)
             fail_ignore.append(cite_list[i])
             continue
 
@@ -130,7 +130,7 @@ for i in range(len(cite_list)):
         results.append(Cite(citekey, cidx, bib_dict['title']))
         if zdf is not None and len(zdf[zdf.ID == citekey]) == 0:
             new_bibs.append(enrich_bib(bib_db))
-        print("OK ✅", citekey)
+        print("    ✅", citekey)
 
     except ConnectionResetError or requests.exceptions.ProxyError:
         print("Network Error, wait 10s.")

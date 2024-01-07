@@ -1,13 +1,30 @@
 import json
 import os
 
-from flask import Flask, Response, request
+from flask import Flask, Response, request, url_for
 
-from converter import Converter
+from converter import Converter, touch_note
+import requests
 
 app = Flask(__name__)
 
-converter = Converter()
+HOST = "127.0.0.1"
+PORT = 7070
+
+
+class ConverterAPI(Converter):
+
+    def __init__(self):
+        super().__init__()
+
+    def touch_notes(self):
+        url = f"http://{HOST}:{PORT}/touch"
+        for ck in self.citekey_to_touch:
+            requests.post(url, json={"citekey": ck})
+        self.citekey_to_touch = set()
+
+
+converter = ConverterAPI()
 
 
 @app.route("/obsidian", methods=['POST', 'GET'])
@@ -19,15 +36,15 @@ def note_convert():
 
     converter.load_paper(citekey)
     text = converter.convert_note(req['text'])
-
     detect_citekey_num = len(converter.citekey_to_touch)
-    new_notes = converter.touch_notes()
+    converter.touch_notes()
+    # new_notes = converter.touch_notes()
 
     notification = f"BIB-CATCHER 🫳\n"
     if detect_citekey_num > 0:
         notification += f"😮 Detect {detect_citekey_num} papers."
-        if len(new_notes) > 0:
-            notification += f"\n🆕 Create {len(new_notes)} new notes: {', '.join(new_notes)}"
+        # if len(new_notes) > 0:
+        #     notification += f"\n🆕 Create {len(new_notes)} new notes: {', '.join(new_notes)}"
     else:
         notification += "🙅‍♂️ No paper detected."
 
@@ -38,5 +55,13 @@ def note_convert():
     return Response(json.dumps(data), mimetype='application/json')
 
 
+@app.route("/touch", methods=['POST', 'GET'])
+def touch_md():
+    req = request.get_json()
+    citekey = req['citekey']
+    touch_note(citekey)
+    return Response(json.dumps(dict(status=200)))
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=7070, debug=True)
+    app.run(host=HOST, port=PORT, debug=True)

@@ -20,16 +20,25 @@ from utils.util import *
 ALL_FINISH = True
 
 parser = argparse.ArgumentParser()
-if len(sys.argv) > 1:
-    parser.add_argument('source', type=str, default="")
-else:
-    parser.add_argument('--source', type=str, default="", required=False)
+parser.add_argument('source', type=str, default="", nargs='?')
+parser.add_argument('--ignore_last_fail',
+                    "-i",
+                    type=bool,
+                    default=False,
+                    required=False)
 args = parser.parse_args()
 
 source = args.source.lstrip('@').strip("\n")
 
 # %%
 check_environment()
+
+print("Loading Zotero database...")
+if os.path.exists(zotero_bib_path):
+    with open(zotero_bib_path, "r") as f:
+        ZDF = pd.DataFrame(bibtexparser.load(f).entries)  # Zotero DataFrame
+else:
+    ZDF = None
 
 #: parse input
 if source == "":
@@ -58,27 +67,25 @@ else:
     CITEKEY = bib_dict['ID']
     print(f"Paper: {bib_dict['title']} ({CITEKEY})")
 
-print("Loading Zotero database...")
-if os.path.exists(zotero_bib_path):
-    with open(zotero_bib_path, "r") as f:
-        ZDF = pd.DataFrame(bibtexparser.load(f).entries)  # Zotero DataFrame
-else:
-    ZDF = None
-
 # output dir
 output_dir = ROOT_DIR / 'output' / CITEKEY
 os.makedirs(output_dir, exist_ok=True)
 
-title_path = output_dir / 'title.csv'
+title_csv_path = output_dir / 'title.csv'
+fail_try_path = output_dir / 'fail_try.txt'
 fail_ignore_path = output_dir / 'fail_ignore.txt'
 
 base_df = pd.read_csv(base_path)
 exist_titles = base_df.title.tolist()
 
 last_fail_ignore = []
-if os.path.exists(fail_ignore_path):
+if fail_ignore_path.exists():
     with open(fail_ignore_path, 'r') as f:
-        last_fail_ignore = f.read().split('\n')
+        last_fail_ignore = f.read().strip("\n").split('\n')
+last_fail_try = []
+if fail_try_path.exists():
+    with open(fail_try_path, "r") as f:
+        last_fail_try = f.read().strip("\n").split('\n')
 
 Cite = namedtuple("Cite", "citekey cidx title")
 
@@ -87,7 +94,7 @@ Cite = namedtuple("Cite", "citekey cidx title")
 results = []
 bibs = []
 new_bibs = []
-fail_try, fail_ignore = [], []
+fail_try, fail_ignore = last_fail_try, last_fail_ignore
 
 if len(cite_list) == 0:
     cprint("No citation found. Exit.", c=Color.red)
@@ -100,16 +107,26 @@ for i in range(len(cite_list)):
         if cite == "":
             continue
 
+        def try_url():
+            # try if it is a url
+            url_t = extract_url(cite)
+            if url_t is not None:
+                print("😯 extracted url")
+                results.append(Cite("", cidx, url_t))
+
         cprint(cidx, "|", cite)
 
         if "Website [online]" in cite:
             print("It is a website 😯")
             continue
 
-        # if cite_list[i] in last_fail_ignore:
-        #     fail_ignore.append(cite_list[i])
-        #     cprint("[Pass] failed to find this paper before 😩", c=Color.yellow)
-        #     continue
+        if args.ignore_last_fail:
+            if cite_list[i] in last_fail_ignore or cite_list[
+                    i] in last_fail_try:
+                cprint("[Pass] failed to find this paper before 😩",
+                       c=Color.yellow)
+                try_url()
+                continue
 
         # check whether the paper exists in base
         duplicate_cites = base_df[base_df.title.apply(
@@ -127,6 +144,7 @@ for i in range(len(cite_list)):
         if len(bib) == 0:  # empty output
             cprint("😭 not found", c=Color.red)
             fail_try.append(cite_list[i])
+            try_url()
             continue
 
         bib = bib[0]
@@ -137,6 +155,7 @@ for i in range(len(cite_list)):
                             echo=True):  # not same item
             cprint("😢 different title", c=Color.red)
             fail_ignore.append(cite_list[i])
+            try_url()
             continue
 
         bibs.append(enrich_bib(bib_db))
@@ -147,12 +166,16 @@ for i in range(len(cite_list)):
         print("    ✅", citekey)
 
     except ConnectionResetError or requests.exceptions.ProxyError:
-        print("Network Error, wait 10s.")
+        print("Network Error, wait 10s.", flush=True)
         time.sleep(10)
         continue
     except HTTPError as e:
         print("😱", e)
         continue
+    except KeyboardInterrupt as e:
+        print(e)
+        cprint("Force End", c=Color.red)
+        break
     except Exception as e:
         print(e)
         traceback.print_exc()
@@ -180,15 +203,15 @@ with open(fail_ignore_path, 'w', encoding='utf-8') as f:
 
 if len(results) > 0:
     title_df = pd.DataFrame(results)
-    if os.path.exists(title_path):
-        title_df_old = pd.read_csv(title_path)
+    if title_csv_path.exists():
+        title_df_old = pd.read_csv(title_csv_path)
         title_df = pd.concat([title_df_old, title_df])
         title_df = title_df.drop_duplicates('cidx', keep='last')
     title_df_cidx = title_df.cidx.astype(int)
     title_df = title_df.drop('cidx', axis=1)
     title_df.insert(0, 'cidx', title_df_cidx)
     title_df = title_df.sort_values('cidx')
-    title_df.to_csv(title_path, index=False)
+    title_df.to_csv(title_csv_path, index=False)
 
     with open(output_dir / "zotero.md", 'w') as f:
         f.write("\n".join([

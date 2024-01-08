@@ -49,7 +49,6 @@ def touch_note(citekey):
         cprint("no template", 31)
         return False
     note_path = gen_note_path(citekey)
-    # print(note_path)
     if os.path.exists(note_path):
         cprint(f"[INFO] Note already exists: {citekey}")
         return False
@@ -86,6 +85,7 @@ def get_alias_from_ob_note(citekey):
             aliases.remove(None)
 
         if aliases:
+            aliases = [re.sub(r"[{}]", "", a) for a in aliases]
             return f"[[@{citekey}|{aliases[0]}]]", aliases
     else:
         cprint(f"[WARN]: Cannot find note of {citekey}, ignored.", c=31)
@@ -96,7 +96,8 @@ def get_shorttitle_from_zotero(citekey):
     bdf = ZDF[ZDF.ID == citekey]
     if len(bdf) != 0 and pd.notna(bdf.shorttitle.tolist()[0]):
         shorttitle = re.sub(r'[\{\}]', '', bdf.shorttitle.tolist()[0])
-        return f"[[@{citekey}|{shorttitle}]]"
+        if " " not in shorttitle:  # only single word is allowed to be short title
+            return f"[[@{citekey}|{shorttitle}]]"
     return ""
 
 
@@ -127,7 +128,7 @@ class Converter():
         @r: re match object
         '''
         content = ""
-        citekey = ""
+        citekey = None
         MAX_IDX = self.df.cidx.max()
 
         pre_str = r.group('pre') or r.group('pre_cn')
@@ -159,24 +160,30 @@ class Converter():
                 content += f"[{idx}]"
             else:
                 citekey = cdf.citekey.tolist()[0]
-                self.citekey_to_touch.add(citekey)
+                if not pd.isna(citekey):  # it is a url
 
-                # find paper alias
-                new_text, aliases = get_alias_from_ob_note(citekey)
-                if new_text == "":
-                    new_text = get_shorttitle_from_zotero(citekey)
-                if new_text == "":
-                    new_text = f"[[@{citekey}]]"
+                    self.citekey_to_touch.add(citekey)
+
+                    # find paper alias
+                    new_text, aliases = get_alias_from_ob_note(citekey)
+                    if new_text == "":
+                        new_text = get_shorttitle_from_zotero(citekey)
+                    if new_text == "":
+                        new_text = f"[[@{citekey}]]"
+                else:
+                    aliases = []
+                    url = cdf.title.tolist()[0]
+                    new_text = f"[({idx})]({url})"
                 content += new_text
                 cite_valid_num += 1
 
-        if citekey == "":  # no citekey found
+        if citekey is None:  # nothing found
             return r.group(0)
         else:
             whole_str = r.group(0)
             if cite_valid_num > 1:
                 content = "{" + content + "}"
-            else:  # only one citation
+            else:  # for only one citation, maybe there is its name in the pre-text
                 for alias in aliases:
                     alias_m = re.search(alias, pre_str, re.IGNORECASE)
                     if alias_m is not None:

@@ -58,7 +58,7 @@ def get_refs_from_url(url):
             import time
             for i in range(10):
                 time.sleep(1)
-                print(end='.')
+                print(end='.', flush=True)
             continue
         print()
         if _retry >= 9:
@@ -97,6 +97,14 @@ def get_refs_from_url(url):
     elif "elsevier" in response.url:
         print("Not support yet: elsevier")
     return cite_list
+
+
+def extract_url(text):
+    urls = re.findall(r"Available:\s(https?://[\w\%\-\+\~/\.]*?)\s?(?:/\.|$)",
+                      text)
+    if urls:
+        return urls[0].rstrip(".")
+    return None
 
 
 def cprint(*args, c=30, s=Style.bright, b=None, sep=' ', end='\n'):

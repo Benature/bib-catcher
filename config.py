@@ -2,11 +2,11 @@ import getpass
 import os
 from pathlib import Path
 
-root_dir = Path(__file__).parent
+ROOT_DIR = Path(__file__).parent
 
 # Basic
-base_dir = os.path.join(root_dir, 'base')
-base_path = os.path.join(base_dir, 'all.csv')
+base_dir = ROOT_DIR / 'base'
+base_path = base_dir / 'all.csv'
 
 # Zotero
 zotero_bib_path = '/Library/Zotero/Zotero.bib'

@@ -27,9 +27,9 @@ args = parser.parse_args()
 print("Loading Zotero database...")
 if os.path.exists(zotero_bib_path):
     with open(zotero_bib_path, "r") as f:
-        zdf = pd.DataFrame(bibtexparser.load(f).entries)
+        ZDF = pd.DataFrame(bibtexparser.load(f).entries)  # Zotero DataFrame
 else:
-    zdf = None
+    ZDF = None
 
 print("Loading Citation plugin configuration...")
 ob_config_path = os.path.join(obsidian_base_path, ob_citation_plugin_path)
@@ -54,7 +54,7 @@ def touch_note(citekey):
     if os.path.exists(note_path):
         cprint(f"[INFO] Note already exists: {citekey}")
         return False
-    md = write_note(citekey, ob_template, zdf)
+    md = write_note(citekey, ob_template, ZDF)
     if md == "":
         return False
     cprint(f"[INFO] Write new note: {citekey}", c=33)
@@ -94,9 +94,9 @@ def get_alias_from_ob_note(citekey):
 
 
 def get_shorttitle_from_zotero(citekey):
-    bdf = zdf[zdf.ID == citekey]
+    bdf = ZDF[ZDF.ID == citekey]
     if len(bdf) != 0 and pd.notna(bdf.shorttitle.tolist()[0]):
-        shorttitle = re.sub('[{}]', '', bdf.shorttitle.tolist()[0])
+        shorttitle = re.sub(r'[\{\}]', '', bdf.shorttitle.tolist()[0])
         return f"[[@{citekey}|{shorttitle}]]"
     return ""
 
@@ -112,7 +112,7 @@ class Converter():
         '''paper CITEKEY'''
         paper = paper.lstrip('@')
         if paper not in self.dfs:
-            paper_path = root_dir / 'output' / paper / 'title.csv'
+            paper_path = ROOT_DIR / 'output' / paper / 'title.csv'
             if os.path.exists(paper_path):
                 self.dfs[paper] = pd.read_csv(paper_path)
             else:
@@ -199,22 +199,11 @@ class Converter():
                 return row
 
     def touch_notes(self):
-        # new_notes = []
         citekeys = ",".join(self.citekey_to_touch)
         subprocess.Popen(
             ["python3",
              str(__file__), citekeys, "--command", "touch"])
-        # for ck in self.citekey_to_touch:
-        # if self.api_dict is None:
-        # else:
-        #     url = f"http://{self.api_dict['ip']}:{self.api_dict['port']}/touch"
-        #     print(url)
-        #     requests.post(url, json={"citekey": ck})
-        # t = touch_note(ck)
-        # if t:
-        #     new_notes.append(ck)
         self.citekey_to_touch = set()
-        # return new_notes
 
     def convert_note(self, text):
         if self.load_success:

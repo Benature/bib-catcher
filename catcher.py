@@ -3,6 +3,7 @@ import re
 from collections import namedtuple
 import pandas as pd
 import os
+import sys
 import shutil
 import traceback
 import argparse
@@ -10,6 +11,7 @@ import time
 from gscholar import query
 import bibtexparser
 import subprocess
+from urllib.error import HTTPError
 
 from utils.util import *
 
@@ -18,27 +20,32 @@ from utils.util import *
 ALL_FINISH = True
 
 parser = argparse.ArgumentParser()
-parser.add_argument('source', type=str, default="")
+if len(sys.argv) > 1:
+    parser.add_argument('source', type=str, default="")
+else:
+    parser.add_argument('--source', type=str, default="", required=False)
 args = parser.parse_args()
 
 source = args.source.lstrip('@').strip("\n")
-# CITEKEY = '@benson2010network'.lstrip('@')
 
 # %%
 check_environment()
 
-print("Loading Zotero database...")
-if os.path.exists(zotero_bib_path):
-    with open(zotero_bib_path, "r") as f:
-        zdf = pd.DataFrame(bibtexparser.load(f).entries)
-else:
-    zdf = None
+#: parse input
+if source == "":
+    recent_file = sorted(list((ROOT_DIR / "input").glob("*")),
+                         key=lambda p: p.stat().st_mtime,
+                         reverse=True)[0]
+    source = recent_file.stem
+    print(
+        f"You didn't specify citekey/doi, but your last modified file in `input/` is {source}"
+    )
+    input(f"source = {source} ? (Ctrl+C to quit)")
 
-# parse input
-if os.path.exists(os.path.join(root_dir, 'input', source + ".txt")):
+if Path(ROOT_DIR, 'input', source + ".txt").exists():
     print('Reading reference list from file')
     CITEKEY = source
-    with open(os.path.join(root_dir, f'input/{CITEKEY}.txt'), 'r') as f:
+    with open(ROOT_DIR / f'input/{CITEKEY}.txt', 'r') as f:
         cites = f.read()
         cites = cites.replace('\n', ' ').strip(' \n') + ' [00]'
         cite_list = re.findall(r'\[\d+\].*?(?= \[\d+\])', cites)
@@ -51,12 +58,19 @@ else:
     CITEKEY = bib_dict['ID']
     print(f"Paper: {bib_dict['title']} ({CITEKEY})")
 
+print("Loading Zotero database...")
+if os.path.exists(zotero_bib_path):
+    with open(zotero_bib_path, "r") as f:
+        ZDF = pd.DataFrame(bibtexparser.load(f).entries)  # Zotero DataFrame
+else:
+    ZDF = None
+
 # output dir
-output_dir = os.path.join(root_dir, 'output', CITEKEY)
+output_dir = ROOT_DIR / 'output' / CITEKEY
 os.makedirs(output_dir, exist_ok=True)
 
-title_path = os.path.join(output_dir, 'title.csv')
-fail_ignore_path = os.path.join(output_dir, 'fail_ignore.txt')
+title_path = output_dir / 'title.csv'
+fail_ignore_path = output_dir / 'fail_ignore.txt'
 
 base_df = pd.read_csv(base_path)
 exist_titles = base_df.title.tolist()
@@ -128,13 +142,16 @@ for i in range(len(cite_list)):
         bibs.append(enrich_bib(bib_db))
         citekey = bib_dict['ID']
         results.append(Cite(citekey, cidx, bib_dict['title']))
-        if zdf is not None and len(zdf[zdf.ID == citekey]) == 0:
+        if ZDF is not None and len(ZDF[ZDF.ID == citekey]) == 0:
             new_bibs.append(enrich_bib(bib_db))
         print("    ✅", citekey)
 
     except ConnectionResetError or requests.exceptions.ProxyError:
         print("Network Error, wait 10s.")
         time.sleep(10)
+        continue
+    except HTTPError as e:
+        print("😱", e)
         continue
     except Exception as e:
         print(e)
@@ -149,14 +166,13 @@ for i in range(len(cite_list)):
 #                收尾工作
 # =======================================
 
-with open(os.path.join(output_dir, 'all_ref.bib'), 'a+') as f:
+with open(output_dir / 'all_ref.bib', 'a+') as f:
     f.write('\n'.join(bibs))
 
-with open(os.path.join(output_dir, 'title.txt'), 'w') as f:
+with open(output_dir / 'title.txt', 'w') as f:
     f.write('\n'.join(cite_list))
 
-with open(os.path.join(output_dir, 'fail_try.txt'), 'w',
-          encoding='utf-8') as f:
+with open(output_dir / 'fail_try.txt', 'w', encoding='utf-8') as f:
     f.write('\n'.join(fail_try))
 
 with open(fail_ignore_path, 'w', encoding='utf-8') as f:
@@ -174,7 +190,7 @@ if len(results) > 0:
     title_df = title_df.sort_values('cidx')
     title_df.to_csv(title_path, index=False)
 
-    with open(os.path.join(output_dir, "zotero.md"), 'w') as f:
+    with open(output_dir / "zotero.md", 'w') as f:
         f.write("\n".join([
             f"- [{row.cidx}: {row.title}](zotero://select/items/@{row.citekey})"
             for _, row in title_df.iterrows()
@@ -210,13 +226,13 @@ all_df.to_csv(base_path, index=False)
 
 print("\n", "==" * 30, sep='')
 print("CITEKEY", CITEKEY)
-with open(os.path.join(base_dir, 'history.txt'), 'a+') as f:
+with open(base_dir / 'history.txt', 'a+') as f:
     f.write(CITEKEY + "\n")
 # %%
 
 if len(new_bibs) > 0:
-    with open(os.path.join(output_dir, 'new_refs.bib'), 'w') as f:
+    with open(output_dir / 'new_refs.bib', 'w') as f:
         f.write('\n'.join(bibs))
     subprocess.Popen(
         ["open", "-a", "Zotero.app",
-         os.path.join(output_dir, 'new_refs.bib')]).wait()  # macOS
+         str(output_dir / 'new_refs.bib')]).wait()  # macOS

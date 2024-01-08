@@ -12,6 +12,8 @@ base_path = base_dir / 'all.csv'
 zotero_bib_path = '/Library/Zotero/Zotero.bib'
 
 # Obsidian
-obsidian_base_path = f'/Users/{getpass.getuser()}/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/'
-ob_citation_plugin_path = '.obsidian/plugins/obsidian-citation-plugin/data.json'
+obsidian_base_path = Path(
+    f'/Users/{getpass.getuser()}/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/'
+)
+ob_citation_plugin_path = obsidian_base_path / '.obsidian/plugins/obsidian-citation-plugin/data.json'
 ob_note_path = 'Reading-notes'

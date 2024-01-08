@@ -32,16 +32,15 @@ else:
     ZDF = None
 
 print("Loading Citation plugin configuration...")
-ob_config_path = os.path.join(obsidian_base_path, ob_citation_plugin_path)
-if os.path.exists(ob_config_path):
-    with open(ob_config_path, 'r') as f:
+if ob_citation_plugin_path.exists():
+    with open(ob_citation_plugin_path, 'r') as f:
         ob_template = json.loads(f.read())['literatureNoteContentTemplate']
 else:
     ob_template = None
 
 
 def gen_note_path(citekey):
-    return Path(obsidian_base_path, ob_note_path, f"@{citekey}.md")
+    return obsidian_base_path / ob_note_path / f"@{citekey}.md"
 
 
 def touch_note(citekey):
@@ -229,11 +228,11 @@ if __name__ == '__main__':
     else:
         raise Warning("Unknown command:", args.command)
     if CITEKEY == "":
-        with open(os.path.join(base_dir, 'history.txt'), 'r') as f:
+        with open(base_dir / 'history.txt', 'r') as f:
             CITEKEY = f.readlines()[-1].strip('\n')
             cprint(f"[INFO] Load recent paper: {CITEKEY}", c=Color.yellow)
 
-    with open(os.path.join('output', CITEKEY, 'title.txt'), 'r') as f:
+    with open(ROOT_DIR / f'output/{CITEKEY}/title.txt', 'r') as f:
         title_txt = f.read()
 
     converter = Converter()

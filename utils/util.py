@@ -9,11 +9,8 @@ from .cprint import *
 
 
 def check_environment():
-    dirs = ['base', 'recent', 'output']
-    for d in dirs:
-        if not os.path.exists(d):
-            os.makedirs(d)
-    if not os.path.exists(base_path):
+    [(ROOT_DIR / d).mkdir(exist_ok=True) for d in ['base', 'recent', 'output']]
+    if not base_path.exists():
         with open(base_path, "w") as f:
             f.write("citekey,cite_count,title,cite_by\n")
 

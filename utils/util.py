@@ -103,7 +103,13 @@ def extract_url(text):
     urls = re.findall(r"Available:\s(https?://[\w\%\-\+\~/\.]*?)\s?(?:/\.|$)",
                       text)
     if urls:
-        return urls[0].rstrip(".")
+        url = urls[0].rstrip(".")
+        if "tinyurl.com" in url:
+            cprint(f"parsing `tinyurl.com`: {url}", c=Color.gray)
+            r = requests.get(url)
+            if r.status_code == 200:
+                url = r.url
+        return url
     return None
 
 

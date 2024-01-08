@@ -49,7 +49,7 @@ if source == "":
     print(
         f"You didn't specify citekey/doi, but your last modified file in `input/` is {source}"
     )
-    input(f"source = {source} ? (Ctrl+C to quit)")
+    cprint(f"source = {source} ? (Ctrl+C to quit)", c=Color.red)
 
 if Path(ROOT_DIR, 'input', source + ".txt").exists():
     print('Reading reference list from file')

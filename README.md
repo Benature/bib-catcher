@@ -1,19 +1,30 @@
-<a href="https://github.com/Benature/bib-catcher"><img src="https://i.328888.xyz/2022/12/10/f9HqU.png" height="150" align="right"></a>
+<!-- <a href="https://github.com/Benature/bib-catcher"><img src="https://i.328888.xyz/2022/12/10/f9HqU.png" height="150" align="right"></a> -->
 
 # bib Catcher 🫳
+
+- Parse paper's reference into `.bib` file and load it in Zotero.app.
+  - support paper (citekey) and url
+- covert cite index (e.g. `[11]`) to its citekey (e.g. `[[@bib2022catcher]]`)
 
 ## Features
 
 - Catch bibtex
     ```shell
-    python catcher.py <citekey/doi>
+    python catcher.py <citekey/doi> [-i true/false]
     ```
+    
+    - if `citekey/doi` is not provided, it will catch the most recent modified file in `input/`.
+    - `-i`, `--ignore_last_fail` (optional): ignore the cites that failed before
 
 - Convert reference index to citekey in wikilink format
     `<citekey>` is optional. If no citekey is provided, it will load the last caught paper.
     ```shell
     python converter.py <citekey>
     ```
+
+    - if `citekey` is not provided, it will convert last paper that caught
+
+
     example:
     ```diff
     - Another line of recent work focuses on designing compact data structures [19,27,44] with tradeoffs between accuracy and resource footprints. 
@@ -73,6 +84,9 @@ After the catcher finished, there will be output files of benson2010network in `
 
 ---
 # bib 捕手 🫳
+
+**中文说明不再更新，最新说明请看上文英文版本**
+
 [[English](#bib-catcher-🫳) | 中文]
 
 ## 使用

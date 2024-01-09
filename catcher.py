@@ -8,24 +8,33 @@ import shutil
 import traceback
 import argparse
 import time
-from gscholar import query
+import gscholar
+# from gscholar import query
 import bibtexparser
 import subprocess
 from urllib.error import HTTPError
 
 from utils.util import *
+from utils.google_scholar import crazy_query, QueryError
 
 # %%
 
 ALL_FINISH = True
 
+gscholar_outformat = gscholar.FORMAT_BIBTEX
+
 parser = argparse.ArgumentParser()
-parser.add_argument('source', type=str, default="", nargs='?')
+parser.add_argument('source',
+                    type=str,
+                    default="",
+                    nargs='?',
+                    help="citekey or doi or url")
 parser.add_argument('--ignore_last_fail',
                     "-i",
-                    type=bool,
+                    action="store_true",
                     default=False,
-                    required=False)
+                    required=False,
+                    help="ignore the references that failed before")
 args = parser.parse_args()
 
 source = args.source.lstrip('@').strip("\n")
@@ -61,7 +70,7 @@ if Path(ROOT_DIR, 'input', source + ".txt").exists():
 else:
     print('Getting reference list from url/doi')
     cite_list = get_refs_from_url(source)
-    bibs = query(source)
+    bibs = gscholar.query(source)
     assert len(bibs) > 0, f"Cannot find paper {source}"
     bib_dict = bibtexparser.loads(bibs[0]).entries[0]
     CITEKEY = bib_dict['ID']
@@ -75,7 +84,7 @@ title_csv_path = output_dir / 'title.csv'
 fail_try_path = output_dir / 'fail_try.txt'
 fail_ignore_path = output_dir / 'fail_ignore.txt'
 
-base_df = pd.read_csv(base_path)
+base_df = pd.read_csv(base_all_csv_path)
 exist_titles = base_df.title.tolist()
 
 last_fail_ignore = []
@@ -111,7 +120,7 @@ for i in range(len(cite_list)):
             # try if it is a url
             url_t = extract_url(cite)
             if url_t is not None:
-                print("😯 extracted url")
+                print("😯 extracted url:", url_t)
                 results.append(Cite("", cidx, url_t))
 
         cprint(cidx, "|", cite)
@@ -123,7 +132,7 @@ for i in range(len(cite_list)):
         if args.ignore_last_fail:
             if cite_list[i] in last_fail_ignore or cite_list[
                     i] in last_fail_try:
-                cprint("[Pass] failed to find this paper before 😩",
+                cprint("[Pass] because failed to find this paper before 😩",
                        c=Color.yellow)
                 try_url()
                 continue
@@ -139,15 +148,16 @@ for i in range(len(cite_list)):
             continue
 
         # query google scholar
-        bib = query(cite)
+        # bibs = gscholar.query(cite, gscholar_outformat)
+        bibs = crazy_query(cite)
 
-        if len(bib) == 0:  # empty output
+        if len(bibs) == 0:  # empty output
             cprint("😭 not found", c=Color.red)
             fail_try.append(cite_list[i])
             try_url()
             continue
 
-        bib = bib[0]
+        bib = bibs[0]
         bib_db = bibtexparser.loads(bib)
         bib_dict = bib_db.entries[0]
 
@@ -169,8 +179,8 @@ for i in range(len(cite_list)):
         print("Network Error, wait 10s.", flush=True)
         time.sleep(10)
         continue
-    except HTTPError as e:
-        print("😱", e)
+    except QueryError as e:
+        print("😱😱😱", e)
         continue
     except KeyboardInterrupt as e:
         print(e)
@@ -223,10 +233,12 @@ shutil.rmtree('recent')
 shutil.copytree(output_dir, 'recent')
 
 # %%
-base_df = pd.read_csv(base_path)
+base_df = pd.read_csv(base_all_csv_path)
+base_df.citekey.fillna("", inplace=True)
 new_cites = []
 for cite in results:
-    subdf = base_df[base_df.citekey == cite.citekey]
+    subdf = base_df[(base_df.citekey == cite.citekey)
+                    & (base_df.title == cite.title)]
     if len(subdf) == 0:
         new_cites.append(
             dict(
@@ -235,15 +247,16 @@ for cite in results:
                 cite_count=1,
                 cite_by=f'{CITEKEY}({cite.cidx})',
             ))
-    else:  # exist
+    else:  # cite exists
         idx = subdf.index[0]
         if CITEKEY in base_df.loc[idx, 'cite_by']:
+            # cite is already recorded
             continue
         base_df.loc[idx, 'cite_by'] += f';{CITEKEY}({cite.cidx})'
         base_df.loc[idx, 'cite_count'] += 1
 all_df = pd.concat([base_df, pd.DataFrame(new_cites)
                     ]).sort_values(['cite_count', 'citekey'], ascending=False)
-all_df.to_csv(base_path, index=False)
+all_df.to_csv(base_all_csv_path, index=False)
 
 # %%
 

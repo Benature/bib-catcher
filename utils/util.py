@@ -10,18 +10,17 @@ from .cprint import *
 
 def check_environment():
     [(ROOT_DIR / d).mkdir(exist_ok=True) for d in ['base', 'recent', 'output']]
-    if not base_path.exists():
-        with open(base_path, "w") as f:
+    if not base_all_csv_path.exists():
+        with open(base_all_csv_path, "w") as f:
             f.write("citekey,cite_count,title,cite_by\n")
 
 
 def parser(s):
-    replace_pattern = r'[\{\} -\.\?\:]+'
     s = re.sub(r'\[\w\]', "", s)
     # s = re.findall(r'[^\]]+$', s)[0]
     for k, v in {"’": "'", 'ﬁ': 'fi'}.items():
         s = s.replace(k, v)
-    s = re.sub(replace_pattern, '', s).lower()
+    s = re.sub(r'[\$\s\{\}\-\.\?\:\\]', '', s).lower()
     return s
 
 
@@ -100,15 +99,20 @@ def get_refs_from_url(url):
 
 
 def extract_url(text):
-    urls = re.findall(r"Available:\s(https?://[\w\%\-\+\~/\.]*?)\s?(?:/\.|$)",
+    known_domain = r"https?://(github)"
+    urls = re.findall(r"(https?://[\w\%\-\+\~/\.\s\&\=\?]*?)\s?(?:$|/\.|,)",
                       text)
     if urls:
-        url = urls[0].rstrip(".")
-        if "tinyurl.com" in url:
-            cprint(f"parsing `tinyurl.com`: {url}", c=Color.gray)
-            r = requests.get(url)
-            if r.status_code == 200:
-                url = r.url
+        url = urls[0].rstrip(".").replace(" ", "")
+        if len(url) < 50 and re.match(known_domain,
+                                      url) is None:  # if the url is too short
+            cprint(f"maybe it is a short link? : {url}", c=Color.gray)
+            try:
+                r = requests.get(url, timeout=5)
+                if r.status_code == 200:
+                    url = r.url
+            except:
+                pass
         return url
     return None
 

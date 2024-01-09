@@ -6,7 +6,7 @@ ROOT_DIR = Path(__file__).parent
 
 # Basic
 base_dir = ROOT_DIR / 'base'
-base_path = base_dir / 'all.csv'
+base_all_csv_path = base_dir / 'all.csv'
 
 # Zotero
 zotero_bib_path = '/Library/Zotero/Zotero.bib'

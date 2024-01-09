@@ -1,0 +1,3 @@
+[submodule "utils/gscholar_local"]
+	path = utils/gscholar_local
+	url = https://github.com/Benature/gscholar.git

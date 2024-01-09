@@ -3,16 +3,12 @@ import re
 from collections import namedtuple
 import pandas as pd
 import os
-import sys
 import shutil
 import traceback
 import argparse
 import time
-import gscholar
-# from gscholar import query
 import bibtexparser
 import subprocess
-from urllib.error import HTTPError
 
 from utils.util import *
 from utils.google_scholar import crazy_query, QueryError
@@ -20,8 +16,6 @@ from utils.google_scholar import crazy_query, QueryError
 # %%
 
 ALL_FINISH = True
-
-gscholar_outformat = gscholar.FORMAT_BIBTEX
 
 parser = argparse.ArgumentParser()
 parser.add_argument('source',
@@ -73,7 +67,7 @@ if Path(ROOT_DIR, 'input', source + ".txt").exists():
 else:
     print('Getting reference list from url/doi')
     cite_list = get_refs_from_url(source)
-    bibs = gscholar.query(source)
+    bibs = crazy_query(source)
     assert len(bibs) > 0, f"Cannot find paper {source}"
     bib_dict = bibtexparser.loads(bibs[0]).entries[0]
     CITEKEY = bib_dict['ID']
@@ -125,7 +119,7 @@ for i in range(len(cite_list)):
 
         cprint(cidx, "|", cite, end="")
         if not args.force and str(cidx) in known_idxs:
-            cprint(" [Passed as known]", c=Color.gray)
+            cprint("[Passed as known]", c=Color.gray, b=Background.gray)
             continue
 
         if "Website [online]" in cite:
@@ -136,13 +130,15 @@ for i in range(len(cite_list)):
             # try if it is a url
             url_t = extract_url(cite)
             if url_t is not None:
-                print("😯 extracted url:", url_t)
+                cprint("🔗 extracted url:", url_t, c=Color.gray)
                 results.append(Cite("", cidx, url_t))
 
         if args.ignore_last_fail:
             if cite_list[i] in last_fail_ignore or cite_list[
                     i] in last_fail_try:
-                cprint(" [Passed as failed]", c=Color.yellow)
+                cprint("[Passed as failed]",
+                       c=Color.yellow,
+                       b=Background.yellow)
                 try_url()
                 continue
         print()
@@ -158,7 +154,6 @@ for i in range(len(cite_list)):
             continue
 
         # query google scholar
-        # bibs = gscholar.query(cite, gscholar_outformat)
         bibs = crazy_query(cite)
 
         if len(bibs) == 0:  # empty output

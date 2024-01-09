@@ -106,12 +106,13 @@ def extract_url(text):
         url = urls[0].rstrip(".").replace(" ", "")
         if len(url) < 50 and re.match(known_domain,
                                       url) is None:  # if the url is too short
-            cprint(f"maybe it is a short link? : {url}", c=Color.gray)
+            cprint(f"🔗 maybe it is a short link? : {url}", c=Color.gray)
             try:
                 r = requests.get(url, timeout=5)
                 if r.status_code == 200:
                     url = r.url
-            except:
+            except Exception as e:
+                cprint(f"[ERROR] Failed to load url", c=Color.red)
                 pass
         return url
     return None

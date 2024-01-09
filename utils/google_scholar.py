@@ -30,6 +30,7 @@ def my_gscholar_query(text):
 
 
 def scholarly_query(text):
+    global scholarly_used
     if not scholarly_used:
         pg = ProxyGenerator()
         success = pg.FreeProxies()
@@ -55,7 +56,7 @@ def crazy_query(text):
     try:
         return gscholar_query(text)
     except HTTPError as e:
-        print("😱 gscholar:", e)
+        print("😱 gscholar: ", e)
 
     try:
         return scholarly_query(text)

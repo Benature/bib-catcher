@@ -117,7 +117,7 @@ def extract_url(text):
     return None
 
 
-def cprint(*args, c=30, s=Style.bright, b=None, sep=' ', end='\n'):
+def cprint(*args, c=30, s=Style.bright, b=None, sep=' ', end='\n', **kwargs):
     '''color print'''
     string = sep.join(map(str, args))
     if isinstance(c, int):
@@ -125,4 +125,4 @@ def cprint(*args, c=30, s=Style.bright, b=None, sep=' ', end='\n'):
     else:
         f = get_cprint_format(c, s, b)
         string = f.format(string)
-    print(string, end=end)
+    print(string, end=end, flush=True, **kwargs)

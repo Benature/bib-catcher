@@ -32,9 +32,12 @@ parser.add_argument('source',
 parser.add_argument('--ignore_last_fail',
                     "-i",
                     action="store_true",
-                    default=False,
-                    required=False,
                     help="ignore the references that failed before")
+parser.add_argument(
+    '--force',
+    "-f",
+    action="store_true",
+    help="force parse reference even though it is stored in the base database")
 args = parser.parse_args()
 
 source = args.source.lstrip('@').strip("\n")
@@ -87,6 +90,10 @@ fail_ignore_path = output_dir / 'fail_ignore.txt'
 base_df = pd.read_csv(base_all_csv_path)
 exist_titles = base_df.title.tolist()
 
+if not args.force:
+    known_idxs = set(
+        re.findall(rf"{CITEKEY}\((\d+)\)", ";".join(base_df.cite_by.tolist())))
+
 last_fail_ignore = []
 if fail_ignore_path.exists():
     with open(fail_ignore_path, 'r') as f:
@@ -116,6 +123,15 @@ for i in range(len(cite_list)):
         if cite == "":
             continue
 
+        cprint(cidx, "|", cite, end="")
+        if not args.force and str(cidx) in known_idxs:
+            cprint(" [Passed as known]", c=Color.gray)
+            continue
+
+        if "Website [online]" in cite:
+            print("It is a website 😯")
+            continue
+
         def try_url():
             # try if it is a url
             url_t = extract_url(cite)
@@ -123,19 +139,13 @@ for i in range(len(cite_list)):
                 print("😯 extracted url:", url_t)
                 results.append(Cite("", cidx, url_t))
 
-        cprint(cidx, "|", cite)
-
-        if "Website [online]" in cite:
-            print("It is a website 😯")
-            continue
-
         if args.ignore_last_fail:
             if cite_list[i] in last_fail_ignore or cite_list[
                     i] in last_fail_try:
-                cprint("[Pass] because failed to find this paper before 😩",
-                       c=Color.yellow)
+                cprint(" [Passed as failed]", c=Color.yellow)
                 try_url()
                 continue
+        print()
 
         # check whether the paper exists in base
         duplicate_cites = base_df[base_df.title.apply(

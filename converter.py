@@ -39,7 +39,7 @@ else:
     ob_template = None
 
 
-def gen_note_path(citekey):
+def get_note_path(citekey):
     return obsidian_base_path / ob_note_path / f"@{citekey}.md"
 
 
@@ -48,9 +48,9 @@ def touch_note(citekey):
     if ob_template is None:
         cprint("no template", 31)
         return False
-    note_path = gen_note_path(citekey)
+    note_path = get_note_path(citekey)
     if os.path.exists(note_path):
-        cprint(f"[INFO] Note already exists: {citekey}")
+        cprint(f"[INFO] Note already exists: {citekey}", c=Color.blue)
         return False
     md = write_note(citekey, ob_template, ZDF)
     if md == "":
@@ -71,7 +71,7 @@ def get_alias_from_ob_note(citekey):
         link: link to note
         alias(es): string | List[string]
     """
-    note_path = gen_note_path(citekey)
+    note_path = get_note_path(citekey)
     if note_path.exists():
         handler = MarkdownMetadataHandler(note_path)
         meta = handler.extract_metadata()
@@ -95,7 +95,9 @@ def get_alias_from_ob_note(citekey):
 def get_shorttitle_from_zotero(citekey):
     bdf = ZDF[ZDF.ID == citekey]
     if len(bdf) != 0 and pd.notna(bdf.shorttitle.tolist()[0]):
+        from utils.obsidian import clean_latex
         shorttitle = re.sub(r'[\{\}]', '', bdf.shorttitle.tolist()[0])
+        shorttitle = clean_latex(shorttitle)
         if " " not in shorttitle:  # only single word is allowed to be short title
             return f"[[@{citekey}|{shorttitle}]]"
     return ""

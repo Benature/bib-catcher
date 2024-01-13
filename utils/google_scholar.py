@@ -1,9 +1,5 @@
-from scholarly import scholarly, ProxyGenerator
 import gscholar
-from .gscholar_local.gscholar import gscholar as my_gscholar
-
 from urllib.error import HTTPError
-from scholarly._proxy_generator import MaxTriesExceededException
 
 scholarly_used = False
 config = None
@@ -21,6 +17,7 @@ def gscholar_query(text):
 def my_gscholar_query(text):
     global config
     if config is None:
+        from .gscholar_local.gscholar import gscholar as my_gscholar
         import yaml
         from pathlib import Path
         with open(Path(__file__).parent.parent / "config.yaml") as f:
@@ -32,6 +29,8 @@ def my_gscholar_query(text):
 def scholarly_query(text):
     global scholarly_used
     if not scholarly_used:
+        from scholarly import scholarly, ProxyGenerator
+        from scholarly._proxy_generator import MaxTriesExceededException
         pg = ProxyGenerator()
         success = pg.FreeProxies()
         print("FreeProxies", success)

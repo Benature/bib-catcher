@@ -11,20 +11,7 @@ app = Flask(__name__)
 HOST = "127.0.0.1"
 PORT = 7070
 
-
-class ConverterAPI(Converter):
-
-    def __init__(self):
-        super().__init__()
-
-    def touch_notes(self):
-        url = f"http://{HOST}:{PORT}/touch"
-        for ck in self.citekey_to_touch:
-            requests.post(url, json={"citekey": ck})
-        self.citekey_to_touch = set()
-
-
-converter = ConverterAPI()
+converter = Converter()
 
 
 @app.route("/obsidian", methods=['POST', 'GET'])

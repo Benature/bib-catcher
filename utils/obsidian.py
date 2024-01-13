@@ -2,6 +2,7 @@ import re
 import requests
 import pandas as pd
 from pathlib import Path
+from .util import *
 
 root_dir = Path(__file__).parent.parent
 
@@ -30,39 +31,47 @@ def get_tag(container, bib):
     return ""
 
 
+def clean_latex(s):
+    s = s.replace('\\vphantom', '')
+    s = re.sub(r'[\\\{\}]', '', s)
+    return s
+
+
 def write_note(citekey, template, bdf):
     cite = bdf[bdf.ID == citekey]
     if len(cite) == 0:
-        print("Fail to find paper in Zotero")
+        cprint("Fail to find paper in Zotero", c=Color.red)
         return ""
     idx = cite.index[0]
-    bib = bdf.loc[idx].to_dict()
+    B = bdf.loc[idx].to_dict()
+
+    def get(key, f=str):
+        return f(B[key]) if pd.notna(B[key]) else ""
 
     # template = template.replace("{{entry.data.fields.shorttitle}}",
     #                             "{{shorttitle}}")
     md = str(template)
-    container = re.sub(r'[\\\{\}]', '', bib['booktitle'].replace(
-        '\\vphantom', '')) if pd.notna(bib['booktitle']) else ""
+    container = get("booktitle", clean_latex)
     md = md.replace("{{containerTitle}}", container)
-    md = md.replace("{{titleShort}}",
-                    bib['shorttitle'] if pd.notna(bib['shorttitle']) else "")
+    md = md.replace("{{titleShort}}", get("shorttitle", clean_latex))
     try:
-        doi_url = requests.get("https://doi.org/" + str(bib['doi'])).url
+        doi_url = requests.get("https://doi.org/" + str(B['doi'])).url
     except requests.exceptions.ProxyError:
         doi_url = ""
     md = md.replace(
         "{{#if URL}}{{URL}}{{else}}{{#if DOI}}https://doi.org/{{DOI}}{{/if}}{{/if}}",
-        doi_url if pd.notna(bib['doi']) else "")
+        doi_url if pd.notna(B['doi']) else "")
     md = md.replace("{{zoteroSelectURI}}", f"zotero://select/items/@{citekey}")
     md = md.replace(
         "{{#each entry.author}} [[{{given}} {{family}}]],{{/each}}", ",".join(
             map(lambda x: " [[" + re.sub(r'[\{\}]', '', x.strip()) + "]]",
-                bib['author'].replace(',', '').split('and'))))
-    md = md.replace("tags: \n", f"tags: {get_tag(container, bib)}\n")
-    for k, v in bib.items():
+                B['author'].replace(',', '').split('and'))))
+    md = md.replace("tags: \n", f"tags: {get_tag(container, B)}\n")
+    for k, v in B.items():
         if pd.notna(v):
             v = re.sub(r'[{}]', '', v)
         else:
             v = ""
+        v = clean_latex(v)
         md = md.replace("{{%s}}" % k, v)
     return md

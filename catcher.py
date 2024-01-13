@@ -57,19 +57,20 @@ if source == "":
     )
     cprint(f"source = {source} ? (Ctrl+C to quit)", c=Color.red)
 
-if Path(ROOT_DIR, 'input', source + ".txt").exists():
-    print('Reading reference list from file')
+txt_file_path = ROOT_DIR / f'input/{source}.txt'
+if txt_file_path.exists():
     CITEKEY = source
-    with open(ROOT_DIR / f'input/{CITEKEY}.txt', 'r') as f:
+    print(f'Reading reference list from file: {txt_file_path}')
+    with open(txt_file_path, 'r') as f:
         cites = f.read()
         cites = cites.replace('\n', ' ').strip(' \n') + ' [00]'
         cite_list = re.findall(r'\[\d+\].*?(?= \[\d+\])', cites)
 else:
     print('Getting reference list from url/doi')
     cite_list = get_refs_from_url(source)
-    bibs = crazy_query(source)
-    assert len(bibs) > 0, f"Cannot find paper {source}"
-    bib_dict = bibtexparser.loads(bibs[0]).entries[0]
+    bibs_query = crazy_query(source)
+    assert len(bibs_query) > 0, f"Cannot find paper {source}"
+    bib_dict = bibtexparser.loads(bibs_query[0]).entries[0]
     CITEKEY = bib_dict['ID']
     print(f"Paper: {bib_dict['title']} ({CITEKEY})")
 
@@ -102,15 +103,17 @@ Cite = namedtuple("Cite", "citekey cidx title")
 # %%
 
 results = []
-bibs = []
-new_bibs = []
+BIBs = []
+new_BIBs = []
 fail_try, fail_ignore = last_fail_try, last_fail_ignore
 
 if len(cite_list) == 0:
     cprint("No citation found. Exit.", c=Color.red)
     os._exit(1)
 
-for i in range(len(cite_list)):
+i = 0
+# for i in range(len(cite_list)):
+while i < len(cite_list):
     try:
         cidx = int(re.findall(r'\[\d+\]', cite_list[i])[0].strip('[]'))
         cite = re.sub(r'\[\d+\]', '', cite_list[i]).strip()
@@ -120,6 +123,7 @@ for i in range(len(cite_list)):
         cprint(cidx, "|", cite, end="")
         if not args.force and str(cidx) in known_idxs:
             cprint("[Passed as known]", c=Color.gray, b=Background.gray)
+            i += 1
             continue
 
         if "Website [online]" in cite:
@@ -140,29 +144,33 @@ for i in range(len(cite_list)):
                        c=Color.yellow,
                        b=Background.yellow)
                 try_url()
+                i += 1
                 continue
         print()
 
         # check whether the paper exists in base
         duplicate_cites = base_df[base_df.title.apply(
             lambda t: is_same_item(t, cite))]
+        duplicate_cites = duplicate_cites[duplicate_cites.citekey.apply(
+            lambda k: re.match("^[^\d]+", k).group() in cite.lower())]
         if len(duplicate_cites) != 0:
             dc = duplicate_cites.reset_index()
             # titles[cidx] = dc.title[0]
             results.append(Cite(dc.citekey[0], cidx, dc.title[0]))
             cprint("[Pass] bibtex is exist. 💾", c=Color.cyan, s=Style.faded)
+            i += 1
             continue
 
         # query google scholar
-        bibs = crazy_query(cite)
+        bibs_query = crazy_query(cite)
 
-        if len(bibs) == 0:  # empty output
+        if len(bibs_query) == 0:  # empty output
             cprint("😭 not found", c=Color.red)
             fail_try.append(cite_list[i])
             try_url()
             continue
 
-        bib = bibs[0]
+        bib = bibs_query[0]
         bib_db = bibtexparser.loads(bib)
         bib_dict = bib_db.entries[0]
 
@@ -173,11 +181,11 @@ for i in range(len(cite_list)):
             try_url()
             continue
 
-        bibs.append(enrich_bib(bib_db))
+        BIBs.append(enrich_bib(bib_db))
         citekey = bib_dict['ID']
         results.append(Cite(citekey, cidx, bib_dict['title']))
         if ZDF is not None and len(ZDF[ZDF.ID == citekey]) == 0:
-            new_bibs.append(enrich_bib(bib_db))
+            new_BIBs.append(enrich_bib(bib_db))
         print("    ✅", citekey)
 
     except ConnectionResetError or requests.exceptions.ProxyError:
@@ -197,6 +205,7 @@ for i in range(len(cite_list)):
         print(cite_list[i])
         ALL_FINISH = False
         break
+    i += 1
 
 # %%
 
@@ -205,7 +214,7 @@ for i in range(len(cite_list)):
 # =======================================
 
 with open(output_dir / 'all_ref.bib', 'a+') as f:
-    f.write('\n'.join(bibs))
+    f.write('\n'.join(BIBs))
 
 with open(output_dir / 'title.txt', 'w') as f:
     f.write('\n'.join(cite_list))
@@ -271,9 +280,10 @@ with open(base_dir / 'history.txt', 'a+') as f:
     f.write(CITEKEY + "\n")
 # %%
 
-if len(new_bibs) > 0:
+if len(new_BIBs) > 0:
     with open(output_dir / 'new_refs.bib', 'w') as f:
-        f.write('\n'.join(bibs))
+        # f.write('\n'.join(bibs))
+        f.write('\n'.join(new_BIBs))
     subprocess.Popen(
         ["open", "-a", "Zotero.app",
          str(output_dir / 'new_refs.bib')]).wait()  # macOS

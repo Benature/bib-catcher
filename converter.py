@@ -99,6 +99,7 @@ def get_shorttitle_from_zotero(citekey):
         shorttitle = re.sub(r'[\{\}]', '', bdf.shorttitle.tolist()[0])
         shorttitle = clean_latex(shorttitle)
         if " " not in shorttitle:  # only single word is allowed to be short title
+            return shorttitle
             return f"[[@{citekey}|{shorttitle}]]"
     return ""
 
@@ -169,7 +170,10 @@ class Converter():
                     # find paper alias
                     new_text, aliases = get_alias_from_ob_note(citekey)
                     if new_text == "":
-                        new_text = get_shorttitle_from_zotero(citekey)
+                        shorttitle = get_shorttitle_from_zotero(citekey)
+                        if shorttitle != "":
+                            aliases = [shorttitle]
+                            new_text = f"[[@{citekey}|{shorttitle}]]"
                     if new_text == "":
                         new_text = f"[[@{citekey}]]"
                 else:
@@ -188,6 +192,7 @@ class Converter():
             else:  # for only one citation, maybe there is its name in the pre-text
                 for alias in aliases:
                     alias_m = re.search(alias, pre_str, re.IGNORECASE)
+                    print(alias_m)
                     if alias_m is not None:
                         new_pre = pre_str.replace(
                             alias_m.group(),

@@ -1,5 +1,11 @@
 import gscholar
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
+from .gscholar_local.gscholar import gscholar as my_gscholar
+from scholarly import scholarly, ProxyGenerator
+import yaml
+from pathlib import Path
+from scholarly._proxy_generator import MaxTriesExceededException
+from fp.errors import FreeProxyException
 
 scholarly_used = False
 config = None
@@ -17,9 +23,6 @@ def gscholar_query(text):
 def my_gscholar_query(text):
     global config
     if config is None:
-        from .gscholar_local.gscholar import gscholar as my_gscholar
-        import yaml
-        from pathlib import Path
         with open(Path(__file__).parent.parent / "config.yaml") as f:
             config = yaml.safe_load(f.read())
     bibs = my_gscholar.query(text, cookie=config['cookie'])
@@ -29,8 +32,6 @@ def my_gscholar_query(text):
 def scholarly_query(text):
     global scholarly_used
     if not scholarly_used:
-        from scholarly import scholarly, ProxyGenerator
-        from scholarly._proxy_generator import MaxTriesExceededException
         pg = ProxyGenerator()
         success = pg.FreeProxies()
         print("FreeProxies", success)
@@ -54,20 +55,20 @@ def scholarly_query(text):
 def crazy_query(text):
     try:
         return gscholar_query(text)
-    except HTTPError as e:
+    except HTTPError or URLError as e:
         print("😱 gscholar: ", e)
 
     try:
         return scholarly_query(text)
-    except MaxTriesExceededException as e:
+    except MaxTriesExceededException or FreeProxyException as e:
         print("😱 scholarly:", e)
 
     try:
         return my_gscholar_query(text)
-    except Exception as e:
-        print(e)
-        import traceback
-        traceback.print_exc()
+    except HTTPError or URLError as e:
+        print("😱 MYgscholar: ", e)
+        # import traceback
+        # traceback.print_exc()
     raise QueryError
 
 

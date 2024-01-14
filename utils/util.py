@@ -51,9 +51,10 @@ def get_refs_from_url(url):
 
     for _retry in range(10):
         try:
+            cprint(url, c=Color.blue, s=Style.underline)
             response = requests.get(url)
         except requests.exceptions.ProxyError:
-            print("Failed to get, try again later", end='')
+            print("Failed to get, try again later", end='', flush=True)
             import time
             for i in range(10):
                 time.sleep(1)
@@ -69,8 +70,9 @@ def get_refs_from_url(url):
     if 'dl.acm' in response.url:
         soup = bs(response.text, 'lxml')
         for i, ref in enumerate(soup.select('.references__item')):
-            c = ref.select('.references__note')[0].contents[0]
-            cite_list.append(f"[{i+1}] " + c)
+            # c = ref.select('.references__note')[0].contents[0]
+            # cite_list.append(f"[{i+1}] " + c)
+            cite_list.append(ref.select('.references__note')[0].text)
     elif 'ieeexplore.ieee' in response.url:
         arnumber = response.url.split('/')[-2]
         ref_url = f"https://ieeexplore.ieee.org/xpl/dwnldReferences?arnumber={arnumber}"
@@ -95,7 +97,9 @@ def get_refs_from_url(url):
         print()
     elif "elsevier" in response.url:
         print("Not support yet: elsevier")
-    return cite_list
+    title = soup.title.text
+
+    return dict(cite_list=cite_list, title=title)
 
 
 def extract_url(text):

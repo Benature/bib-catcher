@@ -23,6 +23,11 @@ parser.add_argument('source',
                     default="",
                     nargs='?',
                     help="citekey or doi or url")
+parser.add_argument('--max',
+                    '-m',
+                    type=int,
+                    default=-1,
+                    help="max index to search")
 parser.add_argument('--ignore_last_fail',
                     "-i",
                     action="store_true",
@@ -58,6 +63,7 @@ if source == "":
     cprint(f"source = {source} ? (Ctrl+C to quit)", c=Color.red)
 
 txt_file_path = ROOT_DIR / f'input/{source}.txt'
+recent_dir = ROOT_DIR / 'recent'
 if txt_file_path.exists():
     CITEKEY = source
     print(f'Reading reference list from file: {txt_file_path}')
@@ -67,12 +73,35 @@ if txt_file_path.exists():
         cite_list = re.findall(r'\[\d+\].*?(?= \[\d+\])', cites)
 else:
     print('Getting reference list from url/doi')
-    cite_list = get_refs_from_url(source)
-    bibs_query = crazy_query(source)
-    assert len(bibs_query) > 0, f"Cannot find paper {source}"
-    bib_dict = bibtexparser.loads(bibs_query[0]).entries[0]
-    CITEKEY = bib_dict['ID']
-    print(f"Paper: {bib_dict['title']} ({CITEKEY})")
+    net_data = get_refs_from_url(source)
+    cite_list = net_data["cite_list"]
+    title_query_txt_path = recent_dir / "title_query.txt"
+    with open(title_query_txt_path, 'w') as f:
+        f.write("\n".join(cite_list))
+    print(f"save title to {str(title_query_txt_path.relative_to(ROOT_DIR))}")
+
+    # find citekey
+    doi = source.replace("https://doi.org/", "")
+    z_query = ZDF[ZDF.doi == doi]
+    if len(z_query) > 0 and pd.notna(z_query.iloc[0].ID):
+        CITEKEY = z_query.iloc[0].ID
+        cprint(f"Paper citekey: {CITEKEY}", c=Color.red)
+    else:
+        for query_ in (source, net_data["title"]):
+            bibs_query = crazy_query(net_data["title"])
+            if len(bibs_query) > 0:
+                for b in bibs_query:
+                    print(b)
+                break
+
+        assert len(bibs_query) > 0, f"Cannot find paper {source}"
+        bib_dict = bibtexparser.loads(bibs_query[0]).entries[0]
+        CITEKEY = bib_dict['ID']
+        cprint(f"Paper citekey: {CITEKEY} | {bib_dict['title']}", c=Color.red)
+        input("check")
+    # move file
+    print(f"moving title.txt to input/{CITEKEY}.txt")
+    title_query_txt_path.rename(ROOT_DIR / f"input/{CITEKEY}.txt")
 
 # output dir
 output_dir = ROOT_DIR / 'output' / CITEKEY
@@ -114,15 +143,18 @@ if len(cite_list) == 0:
 i = 0
 # for i in range(len(cite_list)):
 while i < len(cite_list):
+    if args.max > 0 and i > args.max:
+        cprint(f"Stop as required ({i}/{len(cite_list)})", c=Color.red)
+        break
     try:
         cidx = int(re.findall(r'\[\d+\]', cite_list[i])[0].strip('[]'))
         cite = re.sub(r'\[\d+\]', '', cite_list[i]).strip()
         if cite == "":
             continue
 
-        cprint(cidx, "|", cite, end="")
+        cprint(cidx, "|", cite, end=" ")
         if not args.force and str(cidx) in known_idxs:
-            cprint("[Passed as known]", c=Color.gray, b=Background.gray)
+            cprint("[Passed as known]", c=Color.green, s=Style.faded)
             i += 1
             continue
 
@@ -142,7 +174,8 @@ while i < len(cite_list):
                     i] in last_fail_try:
                 cprint("[Passed as failed]",
                        c=Color.yellow,
-                       b=Background.yellow)
+                       s=Style.underline,
+                       end=" (Ignore Mode)\n")
                 try_url()
                 i += 1
                 continue
@@ -168,6 +201,7 @@ while i < len(cite_list):
             cprint("😭 not found", c=Color.red)
             fail_try.append(cite_list[i])
             try_url()
+            i += 1
             continue
 
         bib = bibs_query[0]
@@ -179,6 +213,7 @@ while i < len(cite_list):
             cprint("😢 different title", c=Color.red)
             fail_ignore.append(cite_list[i])
             try_url()
+            i += 1
             continue
 
         BIBs.append(enrich_bib(bib_db))
@@ -192,9 +227,9 @@ while i < len(cite_list):
         print("Network Error, wait 10s.", flush=True)
         time.sleep(10)
         continue
-    except QueryError as e:
-        print("😱😱😱", e)
-        continue
+    # except QueryError as e:
+    #     print("😱😱😱", e)
+    #     continue
     except KeyboardInterrupt as e:
         print(e)
         cprint("Force End", c=Color.red)
@@ -284,6 +319,7 @@ if len(new_BIBs) > 0:
     with open(output_dir / 'new_refs.bib', 'w') as f:
         # f.write('\n'.join(bibs))
         f.write('\n'.join(new_BIBs))
+    cprint(f"There are {len(new_BIBs)} new bibs", c=Color.green)
     subprocess.Popen(
         ["open", "-a", "Zotero.app",
          str(output_dir / 'new_refs.bib')]).wait()  # macOS

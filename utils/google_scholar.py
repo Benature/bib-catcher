@@ -55,17 +55,17 @@ def scholarly_query(text):
 def crazy_query(text):
     try:
         return gscholar_query(text)
-    except HTTPError or URLError as e:
+    except (HTTPError, URLError) as e:
         print("😱 gscholar: ", e)
 
     try:
         return scholarly_query(text)
-    except MaxTriesExceededException or FreeProxyException as e:
+    except (MaxTriesExceededException, FreeProxyException) as e:
         print("😱 scholarly:", e)
 
     try:
         return my_gscholar_query(text)
-    except HTTPError or URLError as e:
+    except (HTTPError, URLError) as e:
         print("😱 MYgscholar: ", e)
         # import traceback
         # traceback.print_exc()

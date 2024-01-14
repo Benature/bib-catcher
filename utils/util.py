@@ -20,7 +20,7 @@ def parser(s):
     # s = re.findall(r'[^\]]+$', s)[0]
     for k, v in {"’": "'", 'ﬁ': 'fi'}.items():
         s = s.replace(k, v)
-    s = re.sub(r'[\$\s\{\}\-\.\?\:\\]', '', s).lower()
+    s = re.sub(r'[\$\s\{\}\-\.\?\:\\\(\)]', '', s).lower()
     return s
 
 
@@ -123,7 +123,7 @@ def extract_url(text):
 
 
 def cprint(*args, c=30, s=Style.bright, b=None, sep=' ', end='\n', **kwargs):
-    '''color print'''
+    '''colorfully print'''
     string = sep.join(map(str, args))
     if isinstance(c, int):
         string = f"\033[1;{c}m" + string + "\033[0m"
@@ -131,3 +131,13 @@ def cprint(*args, c=30, s=Style.bright, b=None, sep=' ', end='\n', **kwargs):
         f = get_cprint_format(c, s, b)
         string = f.format(string)
     print(string, end=end, flush=True, **kwargs)
+
+
+def funny_enrich(string):
+    findall = re.findall(r"^(.*?)(19[5-9]\d|20[0-3]\d)(.*?)$", string)
+    if findall:
+        fa = findall[0]
+        f_gf = get_cprint_format(color=Color.gray, style=Style.faded)
+        f_g = get_cprint_format(color=Color.gray)
+        return f_gf.format(fa[0]) + f_g.format(fa[1]) + f_gf.format(fa[2])
+    return string

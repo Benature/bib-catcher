@@ -152,7 +152,7 @@ while i < len(cite_list):
         if cite == "":
             continue
 
-        cprint(cidx, "|", cite, end=" ")
+        print(funny_enrich(f"{cidx} | {cite}"), end=" ")
         if not args.force and str(cidx) in known_idxs:
             cprint("[Passed as known]", c=Color.green, s=Style.faded)
             i += 1
@@ -198,7 +198,7 @@ while i < len(cite_list):
         bibs_query = crazy_query(cite)
 
         if len(bibs_query) == 0:  # empty output
-            cprint("😭 not found", c=Color.red)
+            cprint("😭 found nothing", c=Color.red)
             fail_try.append(cite_list[i])
             try_url()
             i += 1

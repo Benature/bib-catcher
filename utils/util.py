@@ -137,7 +137,78 @@ def funny_enrich(string):
     findall = re.findall(r"^(.*?)(19[5-9]\d|20[0-3]\d)(.*?)$", string)
     if findall:
         fa = findall[0]
-        f_gf = get_cprint_format(color=Color.gray, style=Style.faded)
+        f_gf = get_cprint_format(color=Color.white, style=Style.faded)
         f_g = get_cprint_format(color=Color.gray)
         return f_gf.format(fa[0]) + f_g.format(fa[1]) + f_gf.format(fa[2])
     return string
+
+
+def notify(message: str,
+           title: str,
+           subtitle: str = '',
+           sound: str = 'Hero',
+           method: str = '',
+           open: str = '',
+           activate: str = '',
+           icon: str = '',
+           contentImage: str = '',
+           sender: str = '',
+           terminal_notifier_path: str = 'terminal-notifier') -> None:
+    """Send notification
+    
+    Args:
+        message  (str): Message
+        title    (str): Title of notification
+        subtitle (str): Subtitle of notification
+        sound    (str): Sound of notification
+                        (Valid sound names located in `/System/Library/Sounds`, `~/Library/Sounds`)
+        method   (str): Method to send notification 
+                        (For macOS: `osascript` and `terminal-notifier`)
+        
+        (Args below Only valid for `terminal-notifier`)
+        
+        open         (str): Click to open application or url
+                            e.g. 'https://github.com/Benature' 
+        activate     (str): activate in `terminal-notifier`
+        icon         (str): Icon of notification (url)
+                            e.g. 'https://i.loli.net/2020/12/06/inPGAIkvbyK7SNJ.png'
+        contentImage (str): Image of notification (url)
+                            e.g. 'https://raw.githubusercontent.com/Benature/WordReview/ben/WordReview/static/media/muyi.png'
+        sender       (str): Using sender's icon as notification's icon
+                            e.g. 'com.apple.automator.Confluence'
+        terminal_notifier_path (str): Specific `terminal-notifier` exec path
+    
+    Limitation:
+        Only support macOS for now, issue to let me know if you have a need in Windows or Linux.
+    """
+    import platform
+    sysstr = platform.system()
+
+    if sysstr == 'Darwin':  # macOS
+        if method == 'terminal-notifier':
+            '''https://github.com/julienXX/terminal-notifier'''
+
+            t = f'-title "{title}"'
+            m = f'-message "{message}"'
+            s = f'-subtitle "{subtitle}"'
+            sound = f'-sound "{sound}"'
+
+            icon = f'-appIcon "{icon}"'
+            sender = f'-sender "{sender}"'
+            contentImage = f'-contentImage "{contentImage}"'
+
+            activate = '' if activate == '' else f'-activate "{activate}"'
+            open = '' if open == '' else f'-open "{open}"'
+
+            args = ' '.join(
+                [m, t, s, icon, activate, open, sound, sender, contentImage])
+            os.system(f'{terminal_notifier_path} {args}')
+        else:
+            sound = f'sound name "{sound}"' if sound else ''
+            os.system(
+                f"""osascript -e 'display notification "{message}" with title "{title}" subtitle "{subtitle}" {sound}'"""
+            )
+    elif sysstr == "Windows":
+        print('TODO: windows notification')
+    elif sysstr == "Linux":
+        print('TODO: Linux notification')

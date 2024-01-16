@@ -152,7 +152,7 @@ while i < len(cite_list):
         if cite == "":
             continue
 
-        print(funny_enrich(f"{cidx} | {cite}"), end=" ")
+        print(funny_enrich(f"{cidx}/{len(cite_list)} | {cite}"), end=" ")
         if not args.force and str(cidx) in known_idxs:
             cprint("[Passed as known]", c=Color.green, s=Style.faded)
             i += 1

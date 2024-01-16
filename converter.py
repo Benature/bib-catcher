@@ -43,7 +43,11 @@ def get_note_path(citekey):
     return obsidian_base_path / ob_note_path / f"@{citekey}.md"
 
 
-def touch_note(citekey):
+def touch_note(citekey) -> bool:
+    """touch note: create note only if not exits.
+    Return:
+        bool: True if note already exists or is created
+    """
     print("touch", citekey)
     if ob_template is None:
         cprint("no template", 31)
@@ -51,7 +55,7 @@ def touch_note(citekey):
     note_path = get_note_path(citekey)
     if os.path.exists(note_path):
         cprint(f"[INFO] Note already exists: {citekey}", c=Color.blue)
-        return False
+        return True
     md = write_note(citekey, ob_template, ZDF)
     if md == "":
         return False
@@ -213,9 +217,10 @@ class Converter():
 
     def touch_notes(self):
         citekeys = ",".join(self.citekey_to_touch)
-        subprocess.Popen(
-            ["python3",
-             str(__file__), citekeys, "--command", "touch"])
+        if citekeys:
+            subprocess.Popen(
+                ["python3",
+                 str(__file__), citekeys, "--command", "touch"])
         self.citekey_to_touch = set()
 
     def convert_note(self, text):
@@ -235,8 +240,20 @@ if __name__ == '__main__':
     if args.command == 'convert':
         pass
     elif args.command == "touch":
+        th = {True: [], False: []}  # touch history
         for ck in CITEKEY.split(","):
-            touch_note(ck)
+            success = touch_note(ck.strip())
+            th[success].append(ck.strip())
+        if len(th[False]) == 0:
+            notify(f"Touch {len(th[True])} notes.",
+                   "Touch notes",
+                   "All Success!",
+                   sound="Pop")
+        else:
+            notify(
+                f"Touch {len(th[True])} notes. \nFailed: {'; '.join(th[False])}",
+                "Touch notes",
+                sound="Hero")
         print(">", end="")
         sys.exit(0)
     else:

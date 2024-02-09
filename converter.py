@@ -149,7 +149,7 @@ class Converter():
                 start, end = re.split(connecter, idx)
                 idxs += list(range(int(start), int(end) + 1))
             else:
-                if int(idx) > MAX_IDX:
+                if False and int(idx) > MAX_IDX:
                     idx = str(idx).strip()
                     start_len = floor(len(idx) / 2)
                     start, end = idx[:start_len], idx[start_len:]
@@ -225,7 +225,7 @@ class Converter():
 
     def convert_note(self, text):
         if self.load_success:
-            pattern = r'(?P<pre>[^\s]+ )(?P<idx>\[[\d, \-–]+\])|(?P<pre_cn>[^\s【】]+? ?)(?P<idx_cn>[\[【][\d, ，\-–]+?[】\]])'
+            pattern = r'(?P<pre>[^\s]+ )(?P<idx>\[[\d, \-–]+\])|(?P<pre_cn>[^\s【】]*?\s?)(?P<idx_cn>[\[【][\d, ，\-–]+?[】\]])'
             print(re.findall(pattern, text))
             return re.sub(pattern, self.note_idx2citekey, text)
         else:

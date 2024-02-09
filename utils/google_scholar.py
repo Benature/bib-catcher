@@ -25,7 +25,7 @@ def my_gscholar_query(text):
     if config is None:
         with open(Path(__file__).parent.parent / "config.yaml") as f:
             config = yaml.safe_load(f.read())
-    bibs = my_gscholar.query(text, cookie=config['cookie'])
+    bibs = my_gscholar.query(text, cookie=config['cookieScholar'])
     return bibs
 
 

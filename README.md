@@ -42,7 +42,7 @@
 
 - Generate reference relationship graph
     ```shell
-    python pyecharts.py
+    python echarts.py
     ```
 
 ## Usage
